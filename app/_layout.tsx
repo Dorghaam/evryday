@@ -1,9 +1,20 @@
-import { useEffect } from 'react';
+// Initialize polyfills before any other imports
+import 'react-native-get-random-values';
+import 'react-native-url-polyfill/auto';
+
+// Additional polyfills for Node.js modules used by Supabase
+import { Buffer } from '@craftzdog/react-native-buffer';
+(global as any).Buffer = Buffer;
+
+import { useEffect, useState } from 'react';
 import { useFonts } from 'expo-font';
 import { SplashScreen, Stack } from 'expo-router';
-import { TamaguiProvider } from 'tamagui';
+import { TamaguiProvider, Theme } from 'tamagui';
 import tamaguiConfig from '../tamagui.config'; // Adjust path if needed
 import './global.css'; // Import global CSS for any base styles
+import { SessionContextProvider } from '@supabase/auth-helpers-react';
+import { supabase } from '../lib/supabase/client';
+import { useColorScheme } from 'react-native';
 
 // Import global CSS for NativeWind. This needs to be done once, at the root.
 // For Expo, you typically create a `global.css` and import it,
@@ -18,6 +29,7 @@ import './global.css'; // Import global CSS for any base styles
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const colorScheme = useColorScheme();
   const [loaded, error] = useFonts({
     // TODO: Add your custom fonts here if you have them.
     // For Tamagui, Inter is often used. You can install @tamagui/font-inter
@@ -42,15 +54,16 @@ export default function RootLayout() {
   }
 
   return (
-    <TamaguiProvider config={tamaguiConfig}>
-      {/* 
-        TODO: Add ThemeProvider here if you want to manage themes (light/dark/sepia)
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      */}
-      <Stack>
-        <Stack.Screen name="index" options={{ title: 'Evryday', headerShown: false }} />
-        {/* Add other global screen options or screens here */}
-      </Stack>
-    </TamaguiProvider>
+    <SessionContextProvider supabaseClient={supabase}>
+      <TamaguiProvider config={tamaguiConfig} defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}>
+        <Theme name={colorScheme === 'dark' ? 'dark' : 'light'}>
+          <Stack>
+            <Stack.Screen name="index" options={{ title: 'Evryday', headerShown: false }} />
+            <Stack.Screen name="auth" options={{ title: 'Login / Sign Up', presentation: 'modal' }} />
+            {/* Add other global screen options or screens here */}
+          </Stack>
+        </Theme>
+      </TamaguiProvider>
+    </SessionContextProvider>
   );
 }
