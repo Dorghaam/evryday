@@ -10,10 +10,13 @@ import { useRouter } from 'expo-router';
 const SUBJECTS = ["History", "Science", "Philosophy", "Technology", "Art", "Literature", "Economics", "Psychology"];
 const READING_LEVELS = ["Curious Child (5-8 years)", "Middle Schooler (11-13 years)", "High Schooler (14-17 years)", "University Student", "Seasoned Expert"];
 
+// Helper to convert display string to value string
+const toValueString = (str: string) => str.toLowerCase().replace(/\s+/g, '-').replace(/[()]/g, '');
+
 interface Essay {
-  id?: string; // Supabase ID if saved
-  subject: string;
-  readingLevel: string;
+  id?: string;
+  subject: string;       // Store as display string e.g. "History"
+  readingLevel: string;  // Store as display string e.g. "Curious Child (5-8 years)"
   content: string;
   isFavorite?: boolean;
 }
@@ -22,32 +25,37 @@ export default function EssayGenerator() {
   const user = useUser();
   const router = useRouter();
 
-  const [selectedSubject, setSelectedSubject] = useState(SUBJECTS[0]);
-  const [selectedReadingLevel, setSelectedReadingLevel] = useState(READING_LEVELS[2]);
+  // State for Select components should store the value format used in Select.Item
+  const [selectedSubjectValue, setSelectedSubjectValue] = useState(toValueString(SUBJECTS[0]));
+  const [selectedReadingLevelValue, setSelectedReadingLevelValue] = useState(toValueString(READING_LEVELS[2]));
   
   const [currentEssay, setCurrentEssay] = useState<Essay | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Function to get display string from value string (for currentEssay and API calls)
+  const getDisplaySubject = (value: string) => SUBJECTS.find(s => toValueString(s) === value) || SUBJECTS[0];
+  const getDisplayReadingLevel = (value: string) => READING_LEVELS.find(l => toValueString(l) === value) || READING_LEVELS[0];
+
   // Function to check if the current essay is a favorite
   const checkFavoriteStatus = useCallback(async (essay: Essay) => {
     if (!user || !essay) return false;
     try {
-      const { data, error } = await supabase
+      const { data, error: dbError } = await supabase // aliased error to dbError
         .from('saved_essays')
         .select('id')
         .eq('user_id', user.id)
-        .eq('subject', essay.subject)
-        .eq('reading_level', essay.readingLevel)
-        .eq('content', essay.content) // Matching by content, subject, and level
-        .maybeSingle(); // Use maybeSingle to get one or null
+        .eq('subject', essay.subject) // Uses display string
+        .eq('reading_level', essay.readingLevel) // Uses display string
+        .eq('content', essay.content)
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error checking favorite status:', error.message);
+      if (dbError) {
+        console.error('Error checking favorite status:', dbError.message);
         return false;
       }
-      return !!data; // True if a record is found
+      return !!data;
     } catch (e: any) {
       console.error('Catch Error checking favorite status:', e.message);
       return false;
@@ -57,17 +65,21 @@ export default function EssayGenerator() {
   const handleGenerateEssay = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    console.log(`Generating essay for: ${selectedSubject}, Level: ${selectedReadingLevel}`);
+    
+    const displaySubject = getDisplaySubject(selectedSubjectValue);
+    const displayReadingLevel = getDisplayReadingLevel(selectedReadingLevelValue);
+
+    console.log(`Generating essay for: ${displaySubject}, Level: ${displayReadingLevel}`);
     
     await new Promise(resolve => setTimeout(resolve, 1500)); 
     
-    const mockContent = `This is a mock essay about ${selectedSubject} for a ${selectedReadingLevel}. It contains several paragraphs of interesting, placeholder information designed to simulate a real essay. Once the backend is connected, this will be replaced with AI-generated content. \n\nFor now, enjoy this simulated experience and imagine the possibilities! This is version ${Math.random().toFixed(3)}`; // Add randomness to content
+    const mockContent = `This is a mock essay about ${displaySubject} for a ${displayReadingLevel}. It contains several paragraphs of interesting, placeholder information... This is version ${Math.random().toFixed(3)}`;
     
     const newEssayData: Essay = {
-      subject: selectedSubject,
-      readingLevel: selectedReadingLevel,
+      subject: displaySubject, // Store display string
+      readingLevel: displayReadingLevel, // Store display string
       content: mockContent,
-      isFavorite: false, // Default to false
+      isFavorite: false,
     };
 
     if (user) {
@@ -76,13 +88,11 @@ export default function EssayGenerator() {
     
     setCurrentEssay(newEssayData);
     setIsLoading(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSubject, selectedReadingLevel, user, checkFavoriteStatus]); // Added dependencies
+  }, [selectedSubjectValue, selectedReadingLevelValue, user, checkFavoriteStatus]);
 
   useEffect(() => {
     handleGenerateEssay();
-  }, [handleGenerateEssay]); // Now only depends on the memoized callback
-
+  }, [handleGenerateEssay]);
 
   const handleSaveFavorite = async () => {
     if (!currentEssay) return;
@@ -98,7 +108,7 @@ export default function EssayGenerator() {
     setError(null);
 
     try {
-      if (currentEssay.isFavorite && currentEssay.id) { // Unsave if it has an ID (meaning it was fetched/confirmed as saved)
+      if (currentEssay.isFavorite && currentEssay.id) {
         const { error: deleteError } = await supabase
           .from('saved_essays')
           .delete()
@@ -108,7 +118,7 @@ export default function EssayGenerator() {
         setCurrentEssay(prev => prev ? { ...prev, isFavorite: false, id: undefined } : null);
         Alert.alert('Unsaved', 'Removed from your favorites.');
 
-      } else if (currentEssay.isFavorite && !currentEssay.id) { // Unsave based on content match if no ID yet
+      } else if (currentEssay.isFavorite && !currentEssay.id) {
          const { error: deleteError } = await supabase
           .from('saved_essays')
           .delete()
@@ -121,50 +131,46 @@ export default function EssayGenerator() {
         setCurrentEssay(prev => prev ? { ...prev, isFavorite: false, id: undefined } : null);
         Alert.alert('Unsaved', 'Removed from your favorites.');
 
-      } else { // Save new favorite
+      } else { 
         const { data, error: insertError } = await supabase
           .from('saved_essays')
           .insert({
             user_id: user.id,
-            subject: currentEssay.subject,
-            reading_level: currentEssay.readingLevel,
+            subject: currentEssay.subject,       // Uses display string
+            reading_level: currentEssay.readingLevel, // Uses display string
             content: currentEssay.content,
           })
-          .select('id') // Select the ID of the newly inserted row
-          .single(); // Expect a single row back
+          .select('id')
+          .single();
 
         if (insertError) throw insertError;
         if (data) {
             setCurrentEssay(prev => prev ? { ...prev, isFavorite: true, id: data.id } : null);
             Alert.alert('Saved!', 'Added to your favorites.');
         } else {
-            // Should not happen if insertError is null
             throw new Error("Failed to save essay: No data returned after insert.");
         }
       }
     } catch (e: any) {
       setError(e.message || "An error occurred while saving/unsaving.");
       Alert.alert('Error', e.message || "Could not update favorites.");
-      // Optionally revert optimistic UI update here if needed
     } finally {
       setIsSaving(false);
     }
   };
   
-  // Re-check favorite status if user logs in/out or current essay changes
   useEffect(() => {
     if (currentEssay && user) {
       const verifyFavorite = async () => {
         const isFav = await checkFavoriteStatus(currentEssay);
-        // Try to find existing ID if it is a favorite
         let existingId: string | undefined = undefined;
         if (isFav) {
              const { data } = await supabase
             .from('saved_essays')
             .select('id')
             .eq('user_id', user.id)
-            .eq('subject', currentEssay.subject)
-            .eq('reading_level', currentEssay.readingLevel)
+            .eq('subject', currentEssay.subject) // Uses display string
+            .eq('reading_level', currentEssay.readingLevel) // Uses display string
             .eq('content', currentEssay.content)
             .maybeSingle();
             existingId = data?.id;
@@ -173,22 +179,24 @@ export default function EssayGenerator() {
       }
       verifyFavorite();
     } else if (currentEssay && !user) {
-      // If user logs out, mark as not favorite
       setCurrentEssay(prev => prev ? { ...prev, isFavorite: false, id: undefined } : null);
     }
-  }, [user, currentEssay?.content, checkFavoriteStatus]); // Re-check on content change (new essay) or user change
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, currentEssay?.content]); // Removed checkFavoriteStatus from deps as it's stable
 
   return (
     <YStack space="$4" flex={1} paddingHorizontal="$3">
-      {/* Controls Section (remains the same) */}
       <YStack space="$3" paddingVertical="$3" borderBottomWidth={1} borderColor="$borderColor">
         <H3 textAlign="center" color="$color">Craft Your Idea</H3>
         <YStack space="$2">
           <Text fontSize="$3" color="$colorFocus">Subject</Text>
-          <Select value={selectedSubject} onValueChange={setSelectedSubject} disablePreventBodyScroll>
+          {/* Use selectedSubjectValue for Select's value prop */}
+          <Select value={selectedSubjectValue} onValueChange={setSelectedSubjectValue} disablePreventBodyScroll>
             <Select.Trigger iconAfter={ChevronDown}>
-              <Select.Value placeholder="Choose a subject..." />
+              {/* Display the user-friendly version */}
+              <Select.Value placeholder="Choose a subject...">
+                {getDisplaySubject(selectedSubjectValue)}
+              </Select.Value>
             </Select.Trigger>
             <Adapt when="sm" platform="native">
               <Sheet modal dismissOnSnapToBottom snapPointsMode="fit">
@@ -199,7 +207,8 @@ export default function EssayGenerator() {
             <Select.Content>
               <Select.Viewport>
                 {SUBJECTS.map((subject, i) => (
-                  <Select.Item index={i} key={subject} value={subject}>
+                  // Use the converted value string for Select.Item value
+                  <Select.Item index={i} key={subject} value={toValueString(subject)}>
                     <Select.ItemText>{subject}</Select.ItemText>
                     <Select.ItemIndicator marginLeft="auto"><Check size={16} /></Select.ItemIndicator>
                   </Select.Item>
@@ -211,9 +220,13 @@ export default function EssayGenerator() {
 
         <YStack space="$2">
           <Text fontSize="$3" color="$colorFocus">Reading Level</Text>
-          <Select value={selectedReadingLevel} onValueChange={setSelectedReadingLevel} disablePreventBodyScroll>
+          {/* Use selectedReadingLevelValue for Select's value prop */}
+          <Select value={selectedReadingLevelValue} onValueChange={setSelectedReadingLevelValue} disablePreventBodyScroll>
             <Select.Trigger iconAfter={ChevronDown}>
-              <Select.Value placeholder="Choose a level..." />
+               {/* Display the user-friendly version */}
+              <Select.Value placeholder="Choose a level...">
+                {getDisplayReadingLevel(selectedReadingLevelValue)}
+              </Select.Value>
             </Select.Trigger>
             <Adapt when="sm" platform="native">
               <Sheet modal dismissOnSnapToBottom snapPointsMode="fit">
@@ -224,7 +237,8 @@ export default function EssayGenerator() {
             <Select.Content>
               <Select.Viewport>
                 {READING_LEVELS.map((level, i) => (
-                  <Select.Item index={i} key={level} value={level}>
+                  // Use the converted value string for Select.Item value
+                  <Select.Item index={i} key={level} value={toValueString(level)}>
                     <Select.ItemText>{level}</Select.ItemText>
                     <Select.ItemIndicator marginLeft="auto"><Check size={16} /></Select.ItemIndicator>
                   </Select.Item>
@@ -237,7 +251,7 @@ export default function EssayGenerator() {
         <Button 
           icon={isLoading ? <Spinner /> : <RefreshCw size={16} />} 
           onPress={handleGenerateEssay} 
-          disabled={isLoading || isSaving} // Also disable if saving
+          disabled={isLoading || isSaving}
           theme="active"
           size="$4"
         >
@@ -247,17 +261,15 @@ export default function EssayGenerator() {
 
       {error && <Text color="$red10" textAlign="center" padding="$2" fontSize="$2">{error}</Text>}
 
-      {/* Essay Display Section */}
       {currentEssay ? (
         <ScrollView flex={1} contentContainerStyle={{ paddingBottom: 20 }}>
           <YStack space="$3" padding="$3" backgroundColor="$background" borderRadius="$4" elevation="$2">
-            <H3 color="$color12" onPress={() => console.log(currentEssay)}>{currentEssay.subject}</H3> 
+            <H3 color="$color12">{currentEssay.subject}</H3> 
             <Paragraph theme="alt2" color="$color11" fontSize="$3">{currentEssay.readingLevel}</Paragraph>
             <Paragraph color="$color" lineHeight={24} fontSize="$5" whiteSpace="pre-wrap">
               {currentEssay.content}
             </Paragraph>
             
-            {/* Debug info */}
             {__DEV__ && (
               <Text fontSize="$2" color="$gray10" padding="$2">
                 Debug: User: {user ? 'logged in' : 'not logged in'} | isFavorite: {currentEssay.isFavorite ? 'true' : 'false'} | ID: {currentEssay.id || 'none'}
@@ -269,16 +281,16 @@ export default function EssayGenerator() {
               onPress={handleSaveFavorite}
               disabled={isSaving || isLoading}
               aria-label="Save Favorite"
-              size="$5" // Made larger
+              size="$5" 
               alignSelf='flex-end'
               theme={currentEssay.isFavorite ? "yellow" : "gray"}
-              backgroundColor={currentEssay.isFavorite ? "$yellow5" : "$gray5"} // Add background color for visibility
+              backgroundColor={currentEssay.isFavorite ? "$yellow5" : "$gray5"}
               borderWidth={1}
               borderColor={currentEssay.isFavorite ? "$yellow8" : "$gray8"}
               marginTop="$3"
-              elevation="$2" // Add some elevation
+              elevation="$2" 
             >
-              {isSaving ? "..." : (currentEssay.isFavorite ? "⭐" : "☆")} {/* Use emoji stars for better visibility */}
+              {isSaving ? "..." : (currentEssay.isFavorite ? "⭐" : "☆")} 
             </Button>
           </YStack>
         </ScrollView>
