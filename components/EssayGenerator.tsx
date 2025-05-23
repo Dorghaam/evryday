@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { YStack, H3, Paragraph, Button, Select, Adapt, Sheet, View, Text, Spinner, ScrollView } from 'tamagui';
-import { Check, ChevronDown, Star as StarIcon, RefreshCw } from 'lucide-react-native'; // Use lucide-react-native
+import { Check, ChevronDown, Star as StarIcon, RefreshCw, BookOpen } from 'lucide-react-native'; // Use lucide-react-native
 import { useUser } from '@supabase/auth-helpers-react';
 import { supabase } from '../lib/supabase/client';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useEssayStore, Essay } from '../store/essayStore'; // Import from store
 
 // --- Constants for selections ---
 const SUBJECTS = ["History", "Science", "Philosophy", "Technology", "Art", "Literature", "Economics", "Psychology"];
@@ -13,23 +14,15 @@ const READING_LEVELS = ["Curious Child (5-8 years)", "Middle Schooler (11-13 yea
 // Helper to convert display string to value string
 const toValueString = (str: string) => str.toLowerCase().replace(/\s+/g, '-').replace(/[()]/g, '');
 
-interface Essay {
-  id?: string;
-  subject: string;       // Store as display string e.g. "History"
-  readingLevel: string;  // Store as display string e.g. "Curious Child (5-8 years)"
-  content: string;
-  isFavorite?: boolean;
-}
-
 export default function EssayGenerator() {
   const user = useUser();
   const router = useRouter();
+  const { currentEssay, setCurrentEssay, setReadTabVisible } = useEssayStore();
 
   // State for Select components should store the value format used in Select.Item
   const [selectedSubjectValue, setSelectedSubjectValue] = useState(toValueString(SUBJECTS[0]));
   const [selectedReadingLevelValue, setSelectedReadingLevelValue] = useState(toValueString(READING_LEVELS[2]));
   
-  const [currentEssay, setCurrentEssay] = useState<Essay | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,15 +94,17 @@ export default function EssayGenerator() {
       }
       
       setCurrentEssay(newEssayData);
+      setReadTabVisible(true); // Make Read tab visible when essay is generated
 
     } catch (e: any) {
       console.error("Failed to generate essay:", e);
       setError(e.message || "An unexpected error occurred while fetching the essay.");
       setCurrentEssay(null); // Clear previous essay on error
+      setReadTabVisible(false); // Hide Read tab on error
     } finally {
       setIsLoading(false);
     }
-  }, [selectedSubjectValue, selectedReadingLevelValue, user, checkFavoriteStatus]);
+  }, [selectedSubjectValue, selectedReadingLevelValue, user, checkFavoriteStatus, setCurrentEssay, setReadTabVisible]);
 
   useEffect(() => {
     // Automatically generate an essay when subject or level changes,
@@ -141,7 +136,7 @@ export default function EssayGenerator() {
           .match({ id: currentEssay.id, user_id: user.id });
 
         if (deleteError) throw deleteError;
-        setCurrentEssay(prev => prev ? { ...prev, isFavorite: false, id: undefined } : null);
+        setCurrentEssay({ ...currentEssay, isFavorite: false, id: undefined });
         Alert.alert('Unsaved', 'Removed from your favorites.');
 
       } else if (currentEssay.isFavorite && !currentEssay.id) {
@@ -154,7 +149,7 @@ export default function EssayGenerator() {
           .eq('content', currentEssay.content);
 
         if (deleteError) throw deleteError;
-        setCurrentEssay(prev => prev ? { ...prev, isFavorite: false, id: undefined } : null);
+        setCurrentEssay({ ...currentEssay, isFavorite: false, id: undefined });
         Alert.alert('Unsaved', 'Removed from your favorites.');
 
       } else { 
@@ -171,7 +166,7 @@ export default function EssayGenerator() {
 
         if (insertError) throw insertError;
         if (data) {
-            setCurrentEssay(prev => prev ? { ...prev, isFavorite: true, id: data.id } : null);
+            setCurrentEssay({ ...currentEssay, isFavorite: true, id: data.id });
             Alert.alert('Saved!', 'Added to your favorites.');
         } else {
             throw new Error("Failed to save essay: No data returned after insert.");
@@ -183,6 +178,10 @@ export default function EssayGenerator() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleReadFullEssay = () => {
+    router.push('/read' as any); // Type assertion to fix router typing issue
   };
   
   useEffect(() => {
@@ -201,11 +200,11 @@ export default function EssayGenerator() {
             .maybeSingle();
             existingId = data?.id;
         }
-        setCurrentEssay(prev => prev ? { ...prev, isFavorite: isFav, id: existingId } : null);
+        setCurrentEssay({ ...currentEssay, isFavorite: isFav, id: existingId });
       }
       verifyFavorite();
     } else if (currentEssay && !user) {
-      setCurrentEssay(prev => prev ? { ...prev, isFavorite: false, id: undefined } : null);
+      setCurrentEssay({ ...currentEssay, isFavorite: false, id: undefined });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, currentEssay?.content]); // Removed checkFavoriteStatus from deps as it's stable
@@ -285,16 +284,32 @@ export default function EssayGenerator() {
         </Button>
       </YStack>
 
-      {error && <Text color="$red10" textAlign="center" padding="$2" fontSize="$2">{error}</Text>}
+      {error && <Text color="$red" textAlign="center" padding="$2" fontSize="$2">{error}</Text>}
 
       {currentEssay ? (
         <ScrollView flex={1} contentContainerStyle={{ paddingBottom: 20 }}>
           <YStack space="$3" padding="$3" backgroundColor="$background" borderRadius="$4" elevation="$2">
             <H3 color="$color12">{currentEssay.subject}</H3> 
             <Paragraph theme="alt2" color="$color11" fontSize="$3">{currentEssay.readingLevel}</Paragraph>
+            
+            {/* Show truncated content with Read More button */}
             <Paragraph color="$color" lineHeight={24} fontSize="$5" whiteSpace="pre-wrap">
-              {currentEssay.content}
+              {currentEssay.content.length > 300 
+                ? `${currentEssay.content.substring(0, 300)}...` 
+                : currentEssay.content}
             </Paragraph>
+            
+            {currentEssay.content.length > 300 && (
+              <Button 
+                icon={<BookOpen size={16} />}
+                onPress={handleReadFullEssay}
+                theme="alt1"
+                size="$4"
+                marginTop="$2"
+              >
+                Read Full Essay
+              </Button>
+            )}
             
             {__DEV__ && (
               <Text fontSize="$2" color="$gray10" padding="$2">
