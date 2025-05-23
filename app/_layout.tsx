@@ -16,7 +16,6 @@ import { SessionContextProvider } from '@supabase/auth-helpers-react';
 import { supabase } from '../lib/supabase/client';
 import { useColorScheme } from 'react-native';
 import { Home, BookOpen, Bookmark } from 'lucide-react-native';
-import { useEssayStore } from '../store/essayStore'; // Import essay store
 
 // Import global CSS for NativeWind. This needs to be done once, at the root.
 // For Expo, you typically create a `global.css` and import it,
@@ -32,7 +31,6 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const { currentEssay } = useEssayStore(); // Get current essay state
 
   const [loaded, error] = useFonts({
     // TODO: Add your custom fonts here if you have them.
@@ -83,11 +81,10 @@ export default function RootLayout() {
               }}
             />
             <Tabs.Screen
-              name="read" // New screen for displaying the full essay
+              name="read" // Screen for displaying the full essay
               options={{
                 title: 'Read',
                 tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />,
-                href: (currentEssay ? '/read' : null) as any, // Dynamically show/hide based on essay state
               }}
             />
             <Tabs.Screen
