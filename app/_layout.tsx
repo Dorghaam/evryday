@@ -60,6 +60,7 @@ export default function RootLayout() {
           <Stack>
             <Stack.Screen name="index" options={{ title: 'Evryday', headerShown: false }} />
             <Stack.Screen name="auth" options={{ title: 'Login / Sign Up', presentation: 'modal' }} />
+            <Stack.Screen name="saved-essays" options={{ title: 'My Saved Ideas' }} />
             {/* Add other global screen options or screens here */}
           </Stack>
         </Theme>
