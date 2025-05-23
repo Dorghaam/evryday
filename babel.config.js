@@ -3,7 +3,7 @@ module.exports = function (api) {
   return {
     presets: ["babel-preset-expo"],
     plugins: [
-      [ // Tamagui plugin configuration
+      [ 
         "@tamagui/babel-plugin",
         {
           components: ["tamagui"],
@@ -11,7 +11,7 @@ module.exports = function (api) {
           logTimings: true,
         },
       ],
-      [ // Recommended for Reanimated (often used with Tamagui or Gesture Handler)
+      [ 
         "react-native-reanimated/plugin",
         {
           globals: ['__scanCodes'], // Optional, for vision-camera-code-scanner if you ever use it
