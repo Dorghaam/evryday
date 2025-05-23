@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  If you need any global base styles for web or to reset native elements, add them here.
+  For Tailwind utility classes, NativeWind's Babel plugin should handle them.
+  Example for web:
+  body {
+    font-family: 'Inter', sans-serif; // Assuming Inter is loaded globally for web
+  }
+*/ 
