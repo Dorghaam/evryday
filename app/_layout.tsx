@@ -7,15 +7,18 @@ import { Buffer } from '@craftzdog/react-native-buffer';
 (global as any).Buffer = Buffer;
 
 import { useEffect, useState } from 'react';
-import { useFonts } from 'expo-font';
-import { SplashScreen, Tabs } from 'expo-router';
+import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import { Merriweather_400Regular, Merriweather_700Bold } from '@expo-google-fonts/merriweather';
+import { SplashScreen, Tabs, Stack } from 'expo-router';
 import { TamaguiProvider, Theme } from 'tamagui';
-import tamaguiConfig from '../tamagui.config'; // Adjust path if needed
-import './global.css'; // Import global CSS for any base styles
+import tamaguiConfig from '../tamagui.config';
+import './global.css';
 import { SessionContextProvider } from '@supabase/auth-helpers-react';
 import { supabase } from '../lib/supabase/client';
+import { Home, BookOpen, Bookmark, Settings } from 'lucide-react-native';
+import { useThemeStore, AppTheme } from '../stores/themeStore';
+import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
-import { Home, BookOpen, Bookmark } from 'lucide-react-native';
 
 // Import global CSS for NativeWind. This needs to be done once, at the root.
 // For Expo, you typically create a `global.css` and import it,
@@ -30,14 +33,39 @@ import { Home, BookOpen, Bookmark } from 'lucide-react-native';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const systemColorScheme = useColorScheme();
+  // Get theme from Zustand store
+  const { currentTheme, init: initThemeStore, setTheme, isSystemTheme } = useThemeStore();
+
+  useEffect(() => {
+    initThemeStore(); // Initialize theme from storage
+  }, [initThemeStore]);
+  
+  // Listen to system color scheme changes ONLY if user wants to follow system theme
+  useEffect(() => {
+    if (isSystemTheme && systemColorScheme) {
+      const newTheme = systemColorScheme as AppTheme;
+      if (newTheme !== currentTheme && (newTheme === 'light' || newTheme === 'dark')) {
+        setTheme(newTheme, true); // Update store, explicitly state it's a system change
+      }
+    }
+  }, [systemColorScheme, isSystemTheme, setTheme, currentTheme]);
 
   const [loaded, error] = useFonts({
-    // TODO: Add your custom fonts here if you have them.
-    // For Tamagui, Inter is often used. You can install @tamagui/font-inter
-    // SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'), // Example from your current assets
+    // Inter font family for UI
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    // Merriweather for reading content
+    Merriweather_400Regular,
+    Merriweather_700Bold,
+    // Tamagui Inter fonts (keep these for Tamagui compatibility)
     Inter: require('@tamagui/font-inter/otf/Inter-Medium.otf'),
     InterBold: require('@tamagui/font-inter/otf/Inter-Bold.otf'),
+    // Example: For a nice serif font for reading, consider:
+    // Lora: require('../assets/fonts/Lora-Regular.ttf'), // Download and add Lora or similar
+    // LoraBold: require('../assets/fonts/Lora-Bold.ttf'),
   });
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
@@ -52,57 +80,31 @@ export default function RootLayout() {
   }, [loaded]);
 
   if (!loaded) {
-    return null; // Or a basic loading spinner if you prefer
+    return null;
   }
 
-  const activeColor = colorScheme === 'dark' ? '#f97316' : '#ea580c'; // Using standard orange colors
-  const inactiveColor = colorScheme === 'dark' ? '#71717a' : '#52525b'; // Using standard gray colors
+  // Determine the theme name for TamaguiProvider and Theme component
+  // Map AppTheme from Zustand to Tamagui theme names
+  let tamaguiThemeName: string = currentTheme;
+  if (currentTheme === 'light') tamaguiThemeName = 'light_app';
+  if (currentTheme === 'dark') tamaguiThemeName = 'dark_app';
+
+  // Safely access theme colors with fallbacks
+  const currentTamaguiTheme = (tamaguiConfig.themes as any)[tamaguiThemeName];
+  const activeColor = currentTamaguiTheme?.orange9?.val || currentTamaguiTheme?.orange10?.val || 'orange';
+  const inactiveColor = currentTamaguiTheme?.gray10?.val || 'grey';
+  const tabBackgroundColor = currentTamaguiTheme?.gray3?.val || (currentTheme === 'dark' ? '#1C1C1E' : '#FFFFFF');
+  const tabBorderColor = currentTamaguiTheme?.gray5?.val || (currentTheme === 'dark' ? '#3A3A3C' : '#D1D1D6');
 
   return (
     <SessionContextProvider supabaseClient={supabase}>
-      <TamaguiProvider config={tamaguiConfig} defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}>
-        <Theme name={colorScheme === 'dark' ? 'dark' : 'light'}>
-          <Tabs
-            screenOptions={{
-              headerShown: false, // We'll handle headers in individual screens or a top-level component
-              tabBarActiveTintColor: activeColor,
-              tabBarInactiveTintColor: inactiveColor,
-              tabBarStyle: {
-                backgroundColor: colorScheme === 'dark' ? '#1a1a1a' : '#ffffff',
-                borderTopColor: colorScheme === 'dark' ? '#404040' : '#e5e5e5',
-              },
-            }}
-          >
-            <Tabs.Screen
-              name="index" // This will be our "Home/Generate" tab
-              options={{
-                title: 'Generate',
-                tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
-              }}
-            />
-            <Tabs.Screen
-              name="read" // Screen for displaying the full essay
-              options={{
-                title: 'Read',
-                tabBarIcon: ({ color, size }) => <BookOpen size={size} color={color} />,
-              }}
-            />
-            <Tabs.Screen
-              name="saved-essays"
-              options={{
-                title: 'Saved',
-                tabBarIcon: ({ color, size }) => <Bookmark size={size} color={color} />,
-              }}
-            />
-            <Tabs.Screen
-              name="auth"
-              options={{
-                href: null, // Hide auth from tab bar as it should be modal
-              }}
-            />
-            {/* Auth screen is typically presented modally, not as a tab */}
-            {/* You might need a separate stack for modals if Stack.Screen for auth was here */}
-          </Tabs>
+      <TamaguiProvider config={tamaguiConfig} defaultTheme={tamaguiThemeName as any}>
+        <Theme name={tamaguiThemeName as any}>
+          <StatusBar style={currentTheme === 'dark' ? 'light' : 'dark'} backgroundColor={tabBackgroundColor} />
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="auth" options={{ presentation: 'modal', title: "Login / Sign Up" }} />
+          </Stack>
         </Theme>
       </TamaguiProvider>
     </SessionContextProvider>
