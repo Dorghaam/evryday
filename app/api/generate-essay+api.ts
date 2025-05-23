@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       temperature: 0.8, // A bit more creative
       topK: 32,
       topP: 0.9,
-      maxOutputTokens: 600, // Roughly 400-500 words
+      maxOutputTokens: 1500, // Roughly 400-500 words
     };
 
     // Safety settings to reduce chances of harmful content
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     
     const prompt = `
       You are an expert educator and concise writer. Generate a 250-400 word mini-essay
-      on the topic of '${subject}' suitable for a '${readingLevel}' audience.
+      on the topic of '${subject}' suitable for a '${readingLevel}' audience referenced to a book (REFERENCE THE BOOK AND AUTHOR IN THE ESSAY).
       The essay should be engaging, informative, and written as if it's a highlight or a key insight
       from a fascinating (but fictional, if necessary) book or article on the subject.
       Do not explicitly state "This essay is from..." or "In this essay...".

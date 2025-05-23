@@ -69,30 +69,56 @@ export default function EssayGenerator() {
     const displaySubject = getDisplaySubject(selectedSubjectValue);
     const displayReadingLevel = getDisplayReadingLevel(selectedReadingLevelValue);
 
-    console.log(`Generating essay for: ${displaySubject}, Level: ${displayReadingLevel}`);
+    console.log(`Calling API to generate essay for: ${displaySubject}, Level: ${displayReadingLevel}`);
     
-    await new Promise(resolve => setTimeout(resolve, 1500)); 
-    
-    const mockContent = `This is a mock essay about ${displaySubject} for a ${displayReadingLevel}. It contains several paragraphs of interesting, placeholder information... This is version ${Math.random().toFixed(3)}`;
-    
-    const newEssayData: Essay = {
-      subject: displaySubject, // Store display string
-      readingLevel: displayReadingLevel, // Store display string
-      content: mockContent,
-      isFavorite: false,
-    };
+    try {
+      const response = await fetch('/api/generate-essay', { // Relative path to the API route
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subject: displaySubject,
+          readingLevel: displayReadingLevel,
+        }),
+      });
 
-    if (user) {
-      newEssayData.isFavorite = await checkFavoriteStatus(newEssayData);
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || `API Error: ${response.status}`);
+      }
+
+      const newEssayData: Essay = {
+        subject: displaySubject,
+        readingLevel: displayReadingLevel,
+        content: result.essay, // Get essay from API response
+        isFavorite: false,
+      };
+
+      if (user) {
+        newEssayData.isFavorite = await checkFavoriteStatus(newEssayData);
+      }
+      
+      setCurrentEssay(newEssayData);
+
+    } catch (e: any) {
+      console.error("Failed to generate essay:", e);
+      setError(e.message || "An unexpected error occurred while fetching the essay.");
+      setCurrentEssay(null); // Clear previous essay on error
+    } finally {
+      setIsLoading(false);
     }
-    
-    setCurrentEssay(newEssayData);
-    setIsLoading(false);
   }, [selectedSubjectValue, selectedReadingLevelValue, user, checkFavoriteStatus]);
 
   useEffect(() => {
-    handleGenerateEssay();
-  }, [handleGenerateEssay]);
+    // Automatically generate an essay when subject or level changes,
+    // but only if not already loading. Debounce or more complex logic could be added here.
+    if (!isLoading) {
+         handleGenerateEssay();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSubjectValue, selectedReadingLevelValue]); // Re-generate when selections change
 
   const handleSaveFavorite = async () => {
     if (!currentEssay) return;
