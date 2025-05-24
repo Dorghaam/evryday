@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { YStack, H3, Button, Select, Adapt, Sheet, Text, Spinner } from 'tamagui';
+import { YStack, XStack, H3, Button, Select, Adapt, Sheet, Text, Spinner, Input, ScrollView } from 'tamagui';
 import { Check, ChevronDown, RefreshCw } from 'lucide-react-native';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -7,7 +7,46 @@ import { useThemeStore } from '../stores/themeStore';
 import { useEssayStore } from '../store/essayStore';
 
 // --- Constants for selections ---
-const SUBJECTS = ["History", "Science", "Philosophy", "Technology", "Art", "Literature", "Economics", "Psychology"];
+const SUBJECTS = [
+  // Humanities & Social Sciences
+  "Ancient History", "Medieval History", "Modern History", "Art History", "Military History",
+  "Ethics", "Metaphysics", "Epistemology", "Political Philosophy", "Philosophy of Mind",
+  "Poetry", "Classic Novels", "Contemporary Fiction", "Drama", "Creative Writing",
+  "Archaeology", "Anthropology", "Sociology", "Cultural Studies", "Media Studies",
+  "Cognitive Psychology", "Social Psychology", "Developmental Psychology", "Political Science",
+  "International Relations", "Macroeconomics", "Microeconomics", "Behavioral Economics",
+  "Geography", "Linguistics", "Religious Studies", "Mythology", "Folklore",
+  
+  // STEM
+  "Physics", "Chemistry", "Biology", "Astronomy", "Earth Science", "Environmental Science",
+  "Neuroscience", "Genetics", "Marine Biology", "Paleontology", "Quantum Mechanics",
+  "Algebra", "Calculus", "Statistics", "Geometry", "Number Theory",
+  "Artificial Intelligence", "Cybersecurity", "Software Development", "Biotechnology",
+  "Nanotechnology", "Robotics", "Space Exploration", "Data Science",
+  "Civil Engineering", "Mechanical Engineering", "Electrical Engineering", "Chemical Engineering",
+  "Aerospace Engineering", "Biomedical Engineering",
+  
+  // Arts & Design
+  "Painting", "Sculpture", "Photography", "Digital Art", "Architecture",
+  "Music Theory", "Music History", "Jazz", "Classical Music", "Electronic Music",
+  "Film Studies", "Documentary Filmmaking", "Performing Arts", "Theater",
+  "Graphic Design", "Fashion Design", "Industrial Design", "Game Design",
+  
+  // Business & Professional
+  "Business Administration", "Marketing", "Finance", "Entrepreneurship",
+  "Human Resources", "Project Management", "Law", "Medicine", "Education",
+  "Journalism", "Public Relations", "Supply Chain Management",
+  
+  // Personal Development & Lifestyle
+  "Health & Wellness", "Nutrition", "Fitness", "Mindfulness", "Meditation",
+  "Productivity", "Personal Finance", "Cooking", "Travel", "Gardening",
+  "DIY & Crafts", "Gaming", "Sports", "Photography",
+  
+  // Other Interesting Topics
+  "True Crime", "Conspiracy Theories", "Futurology", "Cryptography",
+  "Urban Planning", "Climate Change", "Renewable Energy", "Conservation",
+  "Language Learning", "World Cultures", "Sustainable Living", "Mental Health"
+];
 const READING_LEVELS = ["Curious Child (5-8 years)", "Middle Schooler (11-13 years)", "High Schooler (14-17 years)", "University Student", "Seasoned Expert"];
 
 // Helper to convert display string to value string
@@ -15,13 +54,17 @@ const toValueString = (str: string) => str.toLowerCase().replace(/\s+/g, '-').re
 
 export default function EssayGenerator() {
   const router = useRouter();
-  const { getThemeColors } = useThemeStore();
+  const { getThemeColors, currentTheme } = useThemeStore();
   const { setCurrentEssay, setReadTabVisible } = useEssayStore();
   const colors = getThemeColors();
 
   // State for Select components should store the value format used in Select.Item
   const [selectedSubjectValue, setSelectedSubjectValue] = useState(toValueString(SUBJECTS[0]));
   const [selectedReadingLevelValue, setSelectedReadingLevelValue] = useState(toValueString(READING_LEVELS[2]));
+  
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredSubjects, setFilteredSubjects] = useState(SUBJECTS);
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,33 +137,77 @@ export default function EssayGenerator() {
         </H3>
         <YStack space="$2">
           <Text fontSize="$3" color={colors.textColor} fontFamily="Inter_500Medium">Subject</Text>
-          <Select value={selectedSubjectValue} onValueChange={setSelectedSubjectValue} disablePreventBodyScroll>
-            <Select.Trigger iconAfter={ChevronDown}>
-              <Select.Value placeholder="Choose a subject...">
-                {getDisplaySubject(selectedSubjectValue)}
-              </Select.Value>
-            </Select.Trigger>
-            <Adapt when="sm" platform="native">
-              <Sheet modal dismissOnSnapToBottom snapPointsMode="fit">
-                <Sheet.Frame>
-                  <Sheet.ScrollView>
-                    <Adapt.Contents />
-                  </Sheet.ScrollView>
-                </Sheet.Frame>
-                <Sheet.Handle />
-              </Sheet>
-            </Adapt>
-            <Select.Content>
-              <Select.Viewport>
-                {SUBJECTS.map((subject, i) => (
-                  <Select.Item index={i} key={subject} value={toValueString(subject)}>
-                    <Select.ItemText>{subject}</Select.ItemText>
-                    <Select.ItemIndicator marginLeft="auto"><Check size={16} /></Select.ItemIndicator>
-                  </Select.Item>
-                ))}
-              </Select.Viewport>
-            </Select.Content>
-          </Select>
+          <Input
+            placeholder="Search categories..."
+            value={searchTerm}
+            onChangeText={(text) => {
+              setSearchTerm(text);
+              if (text.trim() === '') {
+                setFilteredSubjects(SUBJECTS);
+              } else {
+                setFilteredSubjects(
+                  SUBJECTS.filter(subject =>
+                    subject.toLowerCase().includes(text.toLowerCase())
+                  )
+                );
+              }
+            }}
+            size="$4"
+            borderColor={colors.borderColor}
+            backgroundColor={colors.surfaceColor}
+            color={colors.textColor}
+            placeholderTextColor={colors.inactiveColor}
+            marginVertical="$2"
+            accessibilityLabel="Search categories"
+          />
+          
+          <ScrollView 
+            maxHeight={300}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 20 }}
+          >
+            <XStack flexWrap="wrap" gap="$2" justifyContent="center">
+              {filteredSubjects.map((subjectDisplay, index) => {
+                const subjectVal = toValueString(subjectDisplay);
+                const isSelected = selectedSubjectValue === subjectVal;
+                return (
+                  <Button
+                    key={index}
+                    onPress={() => setSelectedSubjectValue(subjectVal)}
+                    backgroundColor={isSelected ? colors.activeColor : colors.surfaceColor}
+                    borderColor={isSelected ? colors.activeColor : colors.borderColor}
+                    borderWidth={1}
+                    paddingHorizontal="$3"
+                    paddingVertical="$2"
+                    borderRadius="$4"
+                    margin="$1"
+                    minWidth={80}
+                    height="$4"
+                    justifyContent="center"
+                    alignItems="center"
+                    accessibilityRole="button"
+                    accessibilityLabel={subjectDisplay}
+                  >
+                    <Text
+                      color={isSelected ? (currentTheme === 'dark' ? colors.backgroundColor : 'white') : colors.textColor}
+                      fontSize="$2"
+                      fontFamily="Inter_500Medium"
+                      textAlign="center"
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {subjectDisplay}
+                    </Text>
+                  </Button>
+                );
+              })}
+              {filteredSubjects.length === 0 && searchTerm.trim() !== '' && (
+                <YStack flex={1} justifyContent="center" alignItems="center" padding="$4">
+                  <Text color={colors.inactiveColor}>No categories match "{searchTerm}".</Text>
+                </YStack>
+              )}
+            </XStack>
+          </ScrollView>
         </YStack>
 
         <YStack space="$2">
