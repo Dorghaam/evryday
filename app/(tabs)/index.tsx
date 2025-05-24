@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { YStack, XStack, Text, Button as TamaguiButton, ScrollView, H2, Paragraph, Separator, View } from 'tamagui';
+import { YStack, XStack, Text, Button as TamaguiButton, ScrollView, H2, Paragraph, Separator, View, Card } from 'tamagui';
 import { useUser, useSupabaseClient } from '@supabase/auth-helpers-react';
 import { useRouter, Link, Stack } from 'expo-router';
 import { useThemeStore } from '../../stores/themeStore';
@@ -41,7 +41,7 @@ export default function HomeScreen() {
   };
 
   const navigateToEssayGenerator = () => {
-    Alert.alert("Navigate", "Navigate to Essay Generator Screen (to be implemented via FAB action)");
+    router.push('/generate-modal');
   };
   
   const handleViewEssay = (essay: FeaturedEssay) => {
@@ -102,29 +102,30 @@ export default function HomeScreen() {
           <YStack padding="$4" space="$5">
             <H2 color="$appText" fontFamily="Inter_600SemiBold">Featured Essays</H2>
             {featuredEssays.map((essay) => (
-              <YStack
+              <Card
                 key={essay.id}
-                padding="$3.5"
-                marginBottom="$3"
+                elevate
+                bordered
                 backgroundColor="$appSurface"
-                borderRadius="$4"
-                space="$2"
-                borderWidth={1}
-                borderColor="$appBorder"
+                padding="$3.5"
+                space="$2.5"
                 hoverStyle={{ backgroundColor: '$backgroundStrong' }}
-                pressStyle={{ backgroundColor: '$backgroundStrong' }}
+                pressStyle={{ backgroundColor: '$backgroundStrong', scale: 0.98 }}
                 onPress={() => handleViewEssay(essay)}
+                marginBottom="$3.5"
               >
-                <Text fontSize="$5" color="$appText" fontFamily="Merriweather_700Bold">
-                  {essay.title}
-                </Text>
-                <Text fontSize="$2" color="$appTextSecondary" fontFamily="Inter_400Regular">
+                <Card.Header padding={0}>
+                  <Text fontSize="$6" color="$appText" fontFamily="Merriweather_700Bold" lineHeight="$5">
+                    {essay.title}
+                  </Text>
+                </Card.Header>
+                <Text fontSize="$2" color="$appTextSecondary" fontFamily="Inter_500Medium" marginTop="$1">
                   By {essay.author}
                 </Text>
-                <Paragraph color="$appTextSecondary" numberOfLines={2} fontFamily="Inter_400Regular">
+                <Paragraph fontSize="$3" color="$appTextSecondary" numberOfLines={3} ellipsizeMode="tail" fontFamily="Inter_400Regular" lineHeight="$3" marginTop="$1.5">
                   {essay.snippet}
                 </Paragraph>
-              </YStack>
+              </Card>
             ))}
           </YStack>
         </ScrollView>
@@ -139,7 +140,7 @@ export default function HomeScreen() {
           right="$4"
           elevation="$4"
           onPress={navigateToEssayGenerator}
-          pressStyle={{ scale: 0.95, opacity: 0.8 }}
+          pressStyle={{ scale: 0.95, backgroundColor: colors.activeColor, opacity: 0.8 }}
         />
       </YStack>
     </SafeAreaView>

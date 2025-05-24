@@ -107,9 +107,13 @@ export default function RootLayout() {
             <Stack.Screen name="auth" options={{
               presentation: 'modal',
               title: "Login / Sign Up",
-              // Optional: Style header for modal based on theme
-              // headerStyle: { backgroundColor: themeColorsFromStore.surfaceColor },
-              // headerTintColor: themeColorsFromStore.textColor,
+              headerStyle: { backgroundColor: themeColorsFromStore.surfaceColor },
+              headerTintColor: themeColorsFromStore.textColor,
+              headerTitleStyle: { fontFamily: 'Inter_600SemiBold' },
+            }} />
+            <Stack.Screen name="generate-modal" options={{
+              presentation: 'modal',
+              headerShown: false,
             }} />
           </Stack>
         </Theme>
