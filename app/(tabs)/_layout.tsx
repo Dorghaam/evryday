@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, BookOpen, Bookmark } from 'lucide-react-native';
+import { Bookmark, Home, Search, User } from 'lucide-react-native';
 import { useThemeStore } from '../../stores/themeStore';
 import tamaguiConfig from '../../tamagui.config';
 
@@ -14,7 +14,7 @@ export default function TabLayout() {
   const currentTamaguiSpecificTheme = tamaguiConfig.themes[tamaguiThemeName];
 
   // Fallback values are important if tokens aren't found for some reason
-  const activeColor = currentTamaguiSpecificTheme.appPrimary?.val || (currentTheme === 'dark' ? '#F4581C' : '#F4581C');
+  const activeColor = currentTamaguiSpecificTheme.appPrimary?.val || '#F4581C';
   const inactiveColor = currentTamaguiSpecificTheme.appTextSecondary?.val || (currentTheme === 'dark' ? '#A3A3A3' : '#8E8E93');
   const tabBackgroundColor = currentTamaguiSpecificTheme.appSurface?.val || (currentTheme === 'dark' ? '#1A1A1A' : '#FFFFFF');
   const tabBorderColor = currentTamaguiSpecificTheme.appBorder?.val || (currentTheme === 'dark' ? '#2D2D2D' : '#D1D1D6');
@@ -46,21 +46,35 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => <Home size={size*0.9} color={color} />,
+          tabBarIcon: ({ color, size }) => <Home size={size * 0.9} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: 'Explore',
+          tabBarIcon: ({ color, size }) => <Search size={size * 0.9} color={color} />,
         }}
       />
       <Tabs.Screen
         name="read"
         options={{
           title: 'Read',
-          tabBarIcon: ({ color, size }) => <BookOpen size={size*0.9} color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
         name="saved-essays"
         options={{
           title: 'Library',
-          tabBarIcon: ({ color, size }) => <Bookmark size={size*0.9} color={color} />,
+          tabBarIcon: ({ color, size }) => <Bookmark size={size * 0.9} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => <User size={size * 0.9} color={color} />,
         }}
       />
     </Tabs>
