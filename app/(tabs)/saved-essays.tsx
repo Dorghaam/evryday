@@ -26,6 +26,28 @@ export default function SavedEssaysScreen() {
   const [loading, setLoading] = useState(false); // Start with false to prevent flash
   const [error, setError] = useState<string | null>(null);
 
+  // Function to extract the actual essay title from the content
+  const extractEssayTitle = (content: string): string => {
+    // Look for markdown bold title pattern: **Title: Something from "Book by Author"**
+    const titleMatch = content.match(/\*\*([^*]+)\*\*/);
+    if (titleMatch && titleMatch[1]) {
+      let title = titleMatch[1].trim();
+      // Remove "Title:" prefix if present
+      title = title.replace(/^Title:\s*/i, '');
+      // Truncate if too long
+      if (title.length > 60) {
+        title = title.substring(0, 57) + '...';
+      }
+      return title;
+    }
+    // Fallback to extracting first line if no markdown title found
+    const firstLine = content.split('\n')[0].trim();
+    if (firstLine.length > 60) {
+      return firstLine.substring(0, 57) + '...';
+    }
+    return firstLine || 'Untitled Essay';
+  };
+
   // Redirect to auth whenever the screen is focused and there's no user
   useFocusEffect(
     useCallback(() => {
@@ -70,6 +92,15 @@ export default function SavedEssaysScreen() {
       fetchSavedEssays();
     }
   }, [user, fetchSavedEssays]);
+
+  // Refresh essays whenever the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        fetchSavedEssays();
+      }
+    }, [user, fetchSavedEssays])
+  );
 
   const handleDeleteEssay = async (essayId: string) => {
     Alert.alert(
@@ -184,8 +215,17 @@ export default function SavedEssaysScreen() {
           ellipsizeMode="tail"
           fontFamily="Inter_600SemiBold"
         >
-          {item.subject}
+          {extractEssayTitle(item.content)}
         </H3>
+        
+        {/* Subject as subtitle */}
+        <Paragraph 
+          size="$3" 
+          color={colors.inactiveColor}
+          fontFamily="Inter_500Medium"
+        >
+          Subject: {item.subject}
+        </Paragraph>
         
         {/* Reading Level */}
         <Paragraph 
@@ -193,7 +233,7 @@ export default function SavedEssaysScreen() {
           color={colors.inactiveColor}
           fontFamily="Inter_500Medium"
         >
-          {item.reading_level}
+          Reading Level: {item.reading_level}
         </Paragraph>
         
         {/* Date */}
@@ -219,7 +259,7 @@ export default function SavedEssaysScreen() {
             size="$3"
             backgroundColor={colors.activeColor}
             borderColor={colors.activeColor}
-            accessibilityLabel={`View essay: ${item.subject}`}
+            accessibilityLabel={`View essay: ${extractEssayTitle(item.content)}`}
             minHeight={44}
             paddingHorizontal="$4"
             onPress={() => {
@@ -254,7 +294,7 @@ export default function SavedEssaysScreen() {
             backgroundColor="$red9"
             borderColor="$red10"
             borderWidth={1}
-            accessibilityLabel={`Delete essay: ${item.subject}`}
+            accessibilityLabel={`Delete essay: ${extractEssayTitle(item.content)}`}
             minHeight={44}
             minWidth={44}
             onPress={() => handleDeleteEssay(item.id)}

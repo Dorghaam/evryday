@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase/client';
 import { Alert } from 'react-native';
 import { useState } from 'react';
 import { useThemeStore } from '../../stores/themeStore';
+import Markdown from 'react-native-markdown-display';
 
 export default function ReadScreen() {
   const router = useRouter();
@@ -110,16 +111,16 @@ export default function ReadScreen() {
           ),
         }} 
       />
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 50 }}>
-        <H2 color={colors.textColor} fontSize="$7" marginTop="$6" marginBottom="$3" fontFamily="Inter_600SemiBold">
-          {essay.subject}
-        </H2>
-        <Paragraph color={colors.inactiveColor} fontSize="$4" marginBottom="$4" fontFamily="Inter_500Medium">
-          {essay.readingLevel}
-        </Paragraph>
-        <Paragraph color={colors.textColor} fontSize="$6" lineHeight={30} selectable fontFamily="Inter_400Regular">
+      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 40 }}>
+        <Markdown
+          style={{
+            body: { color: colors.textColor, fontSize: 18, lineHeight: 30, fontFamily: 'Inter_400Regular', marginTop: 20 },
+            heading2: { color: colors.textColor, fontSize: 24, fontFamily: 'Inter_600SemiBold', marginTop: 10, marginBottom: 10 },
+            strong: { fontFamily: 'Inter_700Bold', fontSize: 22, color: colors.textColor },
+          }}
+        >
           {essay.content}
-        </Paragraph>
+        </Markdown>
         
         {/* Additional Save Button at bottom for easy access */}
         <XStack justifyContent="center" marginTop="$6" marginBottom="$4">
