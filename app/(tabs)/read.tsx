@@ -115,12 +115,15 @@ export default function ReadScreen() {
         <Markdown
           style={{
             body: { color: colors.textColor, fontSize: 18, lineHeight: 30, fontFamily: 'Merriweather_400Regular', marginTop: 20 },
-            heading1: { color: colors.textColor, fontSize: 32, fontFamily: 'Merriweather_700Bold', marginTop: 15, marginBottom: 15 },
-            heading2: { color: colors.textColor, fontSize: 26, fontFamily: 'Merriweather_700Bold', marginTop: 10, marginBottom: 10 },
-            heading3: { color: colors.textColor, fontSize: 22, fontFamily: 'Merriweather_700Bold', marginTop: 10, marginBottom: 8 },
+            heading1: { color: colors.textColor, fontSize: 32, fontFamily: 'Merriweather_700Bold', marginTop: 15, marginBottom: 15, lineHeight: 40 },
+            heading2: { color: colors.textColor, fontSize: 26, fontFamily: 'Merriweather_700Bold', marginTop: 10, marginBottom: 10, lineHeight: 34 },
+            heading3: { color: colors.textColor, fontSize: 22, fontFamily: 'Merriweather_700Bold', marginTop: 8, marginBottom: 8, lineHeight: 30 },
             strong: { fontFamily: 'Merriweather_700Bold', color: colors.textColor },
-            em: { fontStyle: 'italic', color: colors.textColor },
-            paragraph: { color: colors.textColor, fontSize: 18, lineHeight: 30, fontFamily: 'Merriweather_400Regular', marginBottom: 16 },
+            em: { fontFamily: 'Merriweather_400Regular', fontStyle: 'italic' },
+            link: { color: colors.activeColor, fontFamily: 'Merriweather_400Regular', textDecorationLine: 'underline' },
+            paragraph: { marginVertical: 10, fontFamily: 'Merriweather_400Regular', fontSize: 18, lineHeight: 30, color: colors.textColor },
+            bullet_list_icon: { color: colors.textColor },
+            ordered_list_icon: { color: colors.textColor },
           }}
         >
           {essay.content}
