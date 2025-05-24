@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { YStack, H2, H3, Paragraph, Spinner, ScrollView, Card, Text, Button, Separator } from 'tamagui';
+import { YStack, H2, H3, Paragraph, Spinner, ScrollView, Card, Text, Button, Separator, XStack } from 'tamagui';
 import { useUser } from '@supabase/auth-helpers-react';
 import { supabase } from '../../lib/supabase/client';
 import { Alert, FlatList } from 'react-native'; // Using FlatList for performance
 import { useRouter, Link, Stack, useFocusEffect } from 'expo-router';
-import { Trash2 } from 'lucide-react-native'; // Icon for delete
+import { Trash2, FileText, Eye } from 'lucide-react-native'; // Icons for delete, document, and view
 import { useThemeStore } from '../../stores/themeStore';
 
 interface SavedEssay {
@@ -151,31 +151,79 @@ export default function SavedEssaysScreen() {
   }
 
   const renderItem = ({ item }: { item: SavedEssay }) => (
-    <Card elevation="$2" marginVertical="$2" padding="$3" borderRadius="$4" backgroundColor={colors.surfaceColor}>
-      <Card.Header>
-        <H3 color={colors.textColor}>{item.subject}</H3>
-        <Paragraph size="$2" color={colors.inactiveColor}>{item.reading_level}</Paragraph>
-        <Paragraph size="$1" color={colors.inactiveColor} fontStyle="italic">
+    <XStack 
+      elevation="$2" 
+      marginVertical="$2" 
+      padding="$3" 
+      borderRadius="$4" 
+      backgroundColor={colors.surfaceColor}
+      alignItems="flex-start"
+      space="$3"
+    >
+      {/* Icon */}
+      <FileText 
+        size={24} 
+        color={colors.activeColor}
+        style={{ marginTop: 2 }} // Slight adjustment to align with title
+      />
+      
+      {/* Content Area */}
+      <YStack flex={1} space="$2">
+        {/* Title */}
+        <H3 
+          color={colors.textColor}
+          numberOfLines={2}
+          ellipsizeMode="tail"
+          fontFamily="Inter_600SemiBold"
+        >
+          {item.subject}
+        </H3>
+        
+        {/* Date */}
+        <Paragraph 
+          size="$2" 
+          color={colors.inactiveColor}
+          fontFamily="Inter_400Regular"
+        >
           Saved: {new Date(item.created_at).toLocaleDateString()}
         </Paragraph>
-      </Card.Header>
-      <Separator marginVertical="$2.5" backgroundColor={colors.borderColor} />
-      <Paragraph color={colors.textColor} numberOfLines={5} ellipsizeMode="tail">
-        {item.content}
-      </Paragraph>
-      {/* TODO: Add navigation to a full essay view if desired */}
-      <Button 
-        icon={<Trash2 size={18} color="$red10"/>} 
-        onPress={() => handleDeleteEssay(item.id)}
-        position="absolute"
-        top="$2"
-        right="$2"
-        size="$3"
-        circular
-        chromeless
-        theme="red"
-      />
-    </Card>
+        
+        {/* Action Buttons */}
+        <XStack 
+          justifyContent="flex-end" 
+          space="$2" 
+          marginTop="$1"
+          alignItems="center"
+        >
+          {/* View Button */}
+          <Button 
+            size="$3"
+            backgroundColor={colors.activeColor}
+            borderColor={colors.activeColor}
+            onPress={() => {
+              // TODO: Navigate to full essay view
+              console.log('View essay:', item.id);
+            }}
+          >
+            <XStack alignItems="center" space="$1">
+              <Eye size={16} color="white" />
+              <Text color="white" fontFamily="Inter_500Medium" fontSize="$2">View</Text>
+            </XStack>
+          </Button>
+          
+          {/* Delete Button */}
+          <Button 
+            size="$3"
+            circular
+            chromeless
+            theme="red"
+            onPress={() => handleDeleteEssay(item.id)}
+          >
+            <Trash2 size={18} color="$red10" />
+          </Button>
+        </XStack>
+      </YStack>
+    </XStack>
   );
 
   return (
