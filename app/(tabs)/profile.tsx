@@ -1,10 +1,10 @@
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import { Stack, useRouter } from 'expo-router';
-import { Edit2, HelpCircle, LogOut, Settings, ShieldCheck } from 'lucide-react-native';
+import { HelpCircle, LogOut, Settings, ShieldCheck } from 'lucide-react-native';
 import React from 'react';
 import { Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Avatar, H2, Paragraph, Separator, Button as TamaguiButton, Text, YStack } from 'tamagui';
+import { H2, Paragraph, Separator, Button as TamaguiButton, Text, YStack } from 'tamagui';
 import ThemeToggle from '../../components/ThemeToggle';
 import { useThemeStore } from '../../stores/themeStore';
 
@@ -17,102 +17,103 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     await supabaseClient.auth.signOut();
-    router.replace('/'); // Navigate to home or auth
+    router.replace('/'); 
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.backgroundColor }}>
       <YStack flex={1} backgroundColor="$appBackground">
-        <Stack.Screen options={{ headerShown: false }} />
+        <Stack.Screen 
+          options={{ 
+            headerShown: true,
+            title: user ? (user.email?.split('@')[0] || "Profile") : "Profile",
+            headerStyle: { backgroundColor: colors.surfaceColor },
+            headerTintColor: colors.textColor,
+            headerTitleStyle: { fontFamily: 'Inter_600SemiBold' },
+          }} 
+        />
 
-        {/* Profile Header */}
-        <YStack alignItems="center" paddingVertical="$6" space="$3" borderBottomWidth={1} borderColor="$appBorder" backgroundColor="$appSurface">
-          <Avatar circular size="$10" backgroundColor="$gray5">
-            {/* Replace with user image or initials */}
-            <Avatar.Image src={user?.user_metadata?.avatar_url || "https://placekitten.com/200/200"} />
-            <Avatar.Fallback backgroundColor="$gray4">
-              <Text fontSize="$5" color="$appText">
-                {user?.email ? user.email[0].toUpperCase() : 'U'}
-              </Text>
-            </Avatar.Fallback>
-          </Avatar>
-          <H2 color="$appText" fontFamily="Inter_600SemiBold">
-            {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Guest User'}
-          </H2>
-          {user && (
-            <Paragraph color="$appTextSecondary" fontFamily="Inter_400Regular" onPress={() => router.push('/auth')}>
-              {user.email}
-            </Paragraph>
+        <YStack paddingVertical="$5" paddingHorizontal="$4" alignItems="flex-start" space="$2">
+          {user ? (
+            <H2 color="$appText" fontFamily="Inter_600SemiBold">Welcome, {user.email?.split('@')[0]}</H2>
+          ) : (
+            <YStack space="$2" width="100%">
+              <H2 color="$appText" fontFamily="Inter_600SemiBold">Profile</H2>
+              <Paragraph color="$appTextSecondary">Log in or sign up to save your essays and preferences.</Paragraph>
+              <TamaguiButton 
+                theme="active" 
+                onPress={() => router.push('/auth')} 
+                size="$3" 
+                marginTop="$2"
+                backgroundColor="$appPrimary" 
+                width="100%"
+              >
+                  <Text color="$appButtonText" fontFamily="Inter_500Medium">Login / Sign Up</Text>
+              </TamaguiButton>
+            </YStack>
           )}
-           {!user && (
-            <TamaguiButton theme="active" onPress={() => router.push('/auth')}>
-                <Text color="$appPrimary">Login / Sign Up</Text>
-            </TamaguiButton>
-           )}
         </YStack>
+        
+        <Separator />
 
-        {/* Profile Options List */}
-        <YStack paddingHorizontal="$4" paddingTop="$4" space="$3">
-          <TamaguiButton
-            icon={<Edit2 size={20} color={colors.textColor} />}
-            justifyContent="flex-start"
-            size="$4"
-            chromeless
-            onPress={() => Alert.alert("Edit Profile", "Functionality to be implemented.")}
-          >
-            Edit Profile
-          </TamaguiButton>
-          <Separator />
+        <YStack paddingHorizontal="$3" paddingTop="$4" space="$1">
           <TamaguiButton
             icon={<Settings size={20} color={colors.textColor} />}
             justifyContent="flex-start"
             size="$4"
             chromeless
-             onPress={() => Alert.alert("Settings", "Theme toggle could go here or its own settings page.")}
+            paddingVertical="$3"
+            onPress={() => Alert.alert("Settings", "App settings page (to be implemented).")}
           >
-            Settings
+            <Text color="$appText" fontSize="$4" fontFamily="Inter_500Medium">Settings</Text>
           </TamaguiButton>
-           <Separator />
-           <TamaguiButton
+          <Separator marginHorizontal="$3" />
+          
+          <TamaguiButton
             icon={<ShieldCheck size={20} color={colors.textColor} />}
             justifyContent="flex-start"
             size="$4"
             chromeless
-             onPress={() => Alert.alert("Privacy", "Functionality to be implemented.")}
+            paddingVertical="$3"
+            onPress={() => Alert.alert("Privacy Policy", "Link to privacy policy (to be implemented).")}
           >
-            Privacy Policy
+            <Text color="$appText" fontSize="$4" fontFamily="Inter_500Medium">Privacy Policy</Text>
           </TamaguiButton>
-           <Separator />
-             <TamaguiButton
+          <Separator marginHorizontal="$3" />
+
+          <TamaguiButton
             icon={<HelpCircle size={20} color={colors.textColor} />}
             justifyContent="flex-start"
             size="$4"
             chromeless
-             onPress={() => Alert.alert("Help", "Functionality to be implemented.")}
+            paddingVertical="$3"
+            onPress={() => Alert.alert("Help & Support", "Link to help page (to be implemented).")}
           >
-            Help & Support
+            <Text color="$appText" fontSize="$4" fontFamily="Inter_500Medium">Help & Support</Text>
           </TamaguiButton>
-
-
+          <Separator marginHorizontal="$3" />
+        </YStack>
+        
+        <YStack marginTop="auto" padding="$4" space="$3">
+          <ThemeToggle />
           {user && (
             <>
-              <Separator marginVertical="$3" />
+              <Separator marginVertical="$2" />
               <TamaguiButton
                 icon={<LogOut size={20} color="$red10" />}
-                justifyContent="flex-start"
+                backgroundColor="$appSurface"
+                borderColor="$appBorder"
+                borderWidth={1}
                 size="$4"
-                chromeless
                 onPress={handleLogout}
+                pressStyle={{ backgroundColor: "$red3"}}
               >
-                <Text color="$red10">Logout</Text>
+                <Text color="$red10" fontFamily="Inter_500Medium" fontWeight="600">Logout</Text>
               </TamaguiButton>
             </>
           )}
         </YStack>
-        {/* Include ThemeToggle here for now if desired */}
-        <YStack padding="$4" marginTop="auto">
-            <ThemeToggle />
-        </YStack>
+
       </YStack>
     </SafeAreaView>
   );
