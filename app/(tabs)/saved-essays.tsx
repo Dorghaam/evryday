@@ -1,51 +1,62 @@
-import { useState, useEffect, useCallback } from 'react';
-import { YStack, H2, H3, Paragraph, Spinner, ScrollView, Card, Text, Button, Separator, XStack } from 'tamagui';
 import { useUser } from '@supabase/auth-helpers-react';
+import { Link, Stack, useFocusEffect, useRouter } from 'expo-router';
+import { BookmarkMinus, Search, Trash2 } from 'lucide-react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, FlatList, TouchableOpacity, View } from 'react-native';
+import { Button, H2, H3, Paragraph, Spinner, Text, XStack, YStack } from 'tamagui';
 import { supabase } from '../../lib/supabase/client';
-import { Alert, FlatList } from 'react-native'; // Using FlatList for performance
-import { useRouter, Link, Stack, useFocusEffect } from 'expo-router';
-import { Trash2, FileText, Eye } from 'lucide-react-native'; // Icons for delete, document, and view
-import { useThemeStore } from '../../stores/themeStore';
 import { useEssayStore } from '../../store/essayStore';
+import { useThemeStore } from '../../stores/themeStore';
 
 interface SavedEssay {
   id: string;
   subject: string;
-  reading_level: string; // Note: Supabase columns are often snake_case by convention
+  reading_level: string;
   content: string;
   created_at: string;
+  snippet?: string; 
 }
 
 export default function SavedEssaysScreen() {
   const user = useUser();
   const router = useRouter();
-  const { getThemeColors } = useThemeStore();
+  const { getThemeColors, currentTheme } = useThemeStore();
   const { setCurrentEssay } = useEssayStore();
   const colors = getThemeColors();
   const [savedEssays, setSavedEssays] = useState<SavedEssay[]>([]);
-  const [loading, setLoading] = useState(false); // Start with false to prevent flash
+  const [loading, setLoading] = useState(true); // Start true to show loading initially
   const [error, setError] = useState<string | null>(null);
 
-  // Function to extract the actual essay title from the content
-  const extractEssayTitle = (content: string): string => {
-    // Look for markdown bold title pattern: **Title: Something from "Book by Author"**
-    const titleMatch = content.match(/\*\*([^*]+)\*\*/);
+  const extractEssayDetails = (content: string): { title: string; snippet: string } => {
+    const titleMatch = content.match(/^\s*\*\*(.*?)\*\*/m); // Title often at the start, bolded
+    let title = "Untitled Essay";
     if (titleMatch && titleMatch[1]) {
-      let title = titleMatch[1].trim();
-      // Remove "Title:" prefix if present
-      title = title.replace(/^Title:\s*/i, '');
-      // Truncate if too long
-      if (title.length > 60) {
-        title = title.substring(0, 57) + '...';
-      }
-      return title;
+      title = titleMatch[1].replace(/^Title:\s*/i, '').trim();
+    } else {
+      // Fallback: first non-empty line if no bold title
+      const firstLine = content.split('\n').find(line => line.trim() !== "")?.trim();
+      if (firstLine) title = firstLine;
     }
-    // Fallback to extracting first line if no markdown title found
-    const firstLine = content.split('\n')[0].trim();
-    if (firstLine.length > 60) {
-      return firstLine.substring(0, 57) + '...';
+    if (title.length > 70) title = title.substring(0, 67) + '...';
+
+    // Generate a snippet (first ~100-150 chars, remove markdown)
+    let plainTextContent = content
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold
+      .replace(/\*([^*]+)\*/g, '$1')   // Remove italics
+      .replace(/#{1,6}\s*(.*)/g, '$1') // Remove headings
+      .replace(/\[(.*?)\]\(.*?\)/g, '$1') // Remove links, keep text
+      .replace(/(\r\n|\n|\r)/gm, " ")    // Replace newlines with spaces
+      .replace(/\s\s+/g, ' ');          // Replace multiple spaces with single
+    
+    // Remove the title from the snippet if it's at the beginning
+    if (plainTextContent.toLowerCase().startsWith(title.toLowerCase())) {
+        plainTextContent = plainTextContent.substring(title.length).trim();
     }
-    return firstLine || 'Untitled Essay';
+
+    let snippet = plainTextContent.substring(0, 120).trim();
+    if (plainTextContent.length > 120) snippet += "...";
+
+    return { title, snippet };
   };
 
   // Redirect to auth whenever the screen is focused and there's no user
@@ -130,33 +141,32 @@ export default function SavedEssaysScreen() {
     );
   };
 
-  // If no user, show nothing (useFocusEffect will handle redirect)
-  if (!user) {
+  // If no user and not loading, show nothing (useFocusEffect will handle redirect)
+  if (!user && !loading) {
     return null;
   }
 
   if (loading) {
     return (
-      <YStack flex={1} justifyContent="center" alignItems="center" backgroundColor={colors.backgroundColor}>
-        <Stack.Screen options={{ title: "My Saved Essays" }} />
-        <Spinner size="large" color={colors.activeColor} />
-        <Paragraph marginTop="$2" color={colors.textColor}>Loading your saved essays...</Paragraph>
+      <YStack flex={1} justifyContent="center" alignItems="center" backgroundColor="$appBackground">
+        <Stack.Screen options={{ title: "Library", headerStyle: { backgroundColor: colors.surfaceColor }, headerTintColor: colors.textColor, headerTitleStyle: { fontFamily: 'Inter_600SemiBold' } }} />
+        <Spinner size="large" color="$appPrimary" />
+        <Paragraph marginTop="$2" color="$appText">Loading your saved essays...</Paragraph>
       </YStack>
     );
   }
 
   if (error) {
     return (
-      <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" backgroundColor={colors.backgroundColor}>
-        <Stack.Screen options={{ title: "My Saved Essays" }} />
+      <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" backgroundColor="$appBackground">
+        <Stack.Screen options={{ title: "Library", headerStyle: { backgroundColor: colors.surfaceColor }, headerTintColor: colors.textColor, headerTitleStyle: { fontFamily: 'Inter_600SemiBold' } }} />
         <Paragraph color="$red10" textAlign="center">{error}</Paragraph>
         <Button 
           onPress={fetchSavedEssays} 
           marginTop="$4"
-          backgroundColor={colors.activeColor}
-          borderColor={colors.activeColor}
+          backgroundColor="$appPrimary"
         >
-          <Text color="white" fontFamily="Inter_600SemiBold">Try Again</Text>
+          <Text color="$appButtonText" fontFamily="Inter_600SemiBold">Try Again</Text>
         </Button>
       </YStack>
     );
@@ -164,175 +174,80 @@ export default function SavedEssaysScreen() {
   
   if (savedEssays.length === 0) {
     return (
-      <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" backgroundColor={colors.backgroundColor}>
-        <Stack.Screen options={{ title: "My Saved Essays" }} />
-        <H2 color={colors.textColor}>No Saved Essays Yet</H2>
-        <Paragraph textAlign="center" marginTop="$2" color={colors.textColor}>
-          Start generating and saving essays to see them here!
+      <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" backgroundColor="$appBackground">
+        <Stack.Screen options={{ title: "Library", headerStyle: { backgroundColor: colors.surfaceColor }, headerTintColor: colors.textColor, headerTitleStyle: { fontFamily: 'Inter_600SemiBold' } }} />
+        <BookmarkMinus size={48} color="$appTextSecondary" />
+        <H2 color="$appText" marginTop="$3">Your Library is Empty</H2>
+        <Paragraph textAlign="center" marginTop="$2" color="$appTextSecondary">
+          Essays you save will appear here.
         </Paragraph>
-        <Link href="/" asChild>
-          <Button 
-            marginTop="$4"
-            backgroundColor={colors.activeColor}
-            borderColor={colors.activeColor}
-          >
-            <Text color="white" fontFamily="Inter_600SemiBold">Generate Essays</Text>
+        <Link href="/(tabs)" asChild>
+          <Button marginTop="$4" theme="active" icon={<Search size={18}/>}>
+            <Text color="$appButtonText" fontFamily="Inter_600SemiBold">Explore Essays</Text>
           </Button>
         </Link>
       </YStack>
     );
   }
 
-  const renderItem = ({ item }: { item: SavedEssay }) => (
-    <XStack 
-      elevation="$4" 
-      marginVertical="$2" 
-      padding="$4" 
-      borderRadius="$6" 
-      backgroundColor={colors.surfaceColor}
-      alignItems="flex-start"
-      space="$3"
-      borderWidth={1}
-      borderColor={colors.surfaceColor}
-      shadowColor="$shadowColor"
-      shadowOffset={{ width: 0, height: 2 }}
-      shadowOpacity={0.1}
-      shadowRadius={8}
-    >
-      {/* Icon */}
-      <FileText 
-        size={24} 
-        color={colors.activeColor}
-        style={{ marginTop: 2 }} // Slight adjustment to align with title
-      />
-      
-      {/* Content Area */}
-      <YStack flex={1} space="$2">
-        {/* Title */}
-        <H3 
-          color={colors.textColor}
-          numberOfLines={2}
-          ellipsizeMode="tail"
-          fontFamily="Inter_600SemiBold"
+  const renderItem = ({ item }: { item: SavedEssay }) => {
+    const { title: extractedTitle, snippet: extractedSnippet } = extractEssayDetails(item.content);
+    return (
+      <TouchableOpacity
+        onPress={() => {
+          setCurrentEssay({
+            subject: item.subject,
+            readingLevel: item.reading_level,
+            content: item.content
+          });
+          router.push({ pathname: '/(tabs)/read', params: { ...item } });
+        }}
+      >
+        <YStack
+          paddingVertical="$3.5"
+          paddingHorizontal="$4"
+          borderBottomWidth={1}
+          borderColor="$appBorder"
+          backgroundColor="$appBackground" // Use main background for list items
+          hoverStyle={{ backgroundColor: '$appSurface' }} // Subtle hover
         >
-          {extractEssayTitle(item.content)}
-        </H3>
-        
-        {/* Subject as subtitle */}
-        <Paragraph 
-          size="$3" 
-          color={colors.inactiveColor}
-          fontFamily="Inter_500Medium"
-        >
-          Subject: {item.subject}
-        </Paragraph>
-        
-        {/* Reading Level */}
-        <Paragraph 
-          size="$3" 
-          color={colors.inactiveColor}
-          fontFamily="Inter_500Medium"
-        >
-          Reading Level: {item.reading_level}
-        </Paragraph>
-        
-        {/* Date */}
-        <Paragraph 
-          size="$2" 
-          color={colors.inactiveColor}
-          fontFamily="Inter_400Regular"
-        >
-          Saved: {new Date(item.created_at).toLocaleDateString()}
-        </Paragraph>
-        
-        {/* Action Buttons */}
-        <XStack 
-          justifyContent="flex-end" 
-          space="$3" 
-          marginTop="$3"
-          alignItems="center"
-          flexShrink={0}
-          flexWrap="nowrap"
-        >
-          {/* View Button */}
-          <Button 
-            size="$3"
-            backgroundColor={colors.activeColor}
-            borderColor={colors.activeColor}
-            accessibilityLabel={`View essay: ${extractEssayTitle(item.content)}`}
-            minHeight={44}
-            paddingHorizontal="$4"
-            onPress={() => {
-              // Set current essay for consistency (fallback)
-              setCurrentEssay({
-                subject: item.subject,
-                readingLevel: item.reading_level,
-                content: item.content
-              });
-              
-              // Navigate with direct parameters (more robust)
-              router.push({ 
-                pathname: '/read', 
-                params: { 
-                  subject: item.subject, 
-                  readingLevel: item.reading_level, 
-                  content: item.content 
-                } 
-              });
-            }}
-          >
-            <XStack alignItems="center" space="$2">
-              <Eye size={16} color="white" />
-              <Text color="white" fontFamily="Inter_500Medium" fontSize="$3">View</Text>
-            </XStack>
-          </Button>
-          
-          {/* Delete Button */}
-          <Button 
-            size="$3"
-            circular
-            backgroundColor="$red9"
-            borderColor="$red10"
-            borderWidth={1}
-            accessibilityLabel={`Delete essay: ${extractEssayTitle(item.content)}`}
-            minHeight={44}
-            minWidth={44}
-            onPress={() => handleDeleteEssay(item.id)}
-            pressStyle={{
-              backgroundColor: "$red10",
-              borderColor: "$red11"
-            }}
-          >
-            <Trash2 size={22} color="white" />
-          </Button>
-        </XStack>
-      </YStack>
-    </XStack>
-  );
+          <Text fontSize={14} color="$appTextSecondary" fontFamily="Inter_400Regular" marginBottom="$1.5">
+            {item.subject} • {new Date(item.created_at).toLocaleDateString()}
+          </Text>
+          <H3 color="$appText" fontFamily="Merriweather_700Bold" lineHeight={24} marginBottom="$1.5" numberOfLines={2} ellipsizeMode="tail">
+            {extractedTitle}
+          </H3>
+          <Paragraph color="$appTextSecondary" fontFamily="Inter_400Regular" numberOfLines={2} ellipsizeMode="tail" lineHeight={22}>
+            {extractedSnippet}
+          </Paragraph>
+          <XStack justifyContent="flex-end" marginTop="$3">
+             <Button
+                size="$3" // Changed from $2.5 to valid token
+                icon={<Trash2 size={18} color="$red10" />}
+                onPress={(e) => {
+                    e.stopPropagation(); // Prevent card press
+                    handleDeleteEssay(item.id);
+                }}
+                chromeless // Make it more subtle
+                paddingHorizontal="$2"
+              >
+                <Text color="$red10" fontSize={12}>Remove</Text>
+              </Button>
+          </XStack>
+        </YStack>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <YStack flex={1} backgroundColor={colors.backgroundColor}>
-      <Stack.Screen options={{ title: "My Saved Essays" }} />
+    <YStack flex={1} backgroundColor="$appBackground">
+      <Stack.Screen options={{ title: "Library", headerStyle: { backgroundColor: colors.surfaceColor }, headerTintColor: colors.textColor, headerTitleStyle: { fontFamily: 'Inter_600SemiBold' } }} />
       <FlatList
         data={savedEssays}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ 
-          padding: 16,
-          paddingBottom: 32 
-        }}
-        style={{ flex: 1 }}
-        ListHeaderComponent={
-          <H2 
-            padding="$4" 
-            paddingTop="$8"
-            paddingBottom="$2"
-            color={colors.textColor}
-            fontFamily="Inter_600SemiBold"
-          >
-            My Saved Essays
-          </H2>
-        }
+        ItemSeparatorComponent={() => <View />} // Using borderBottom on items instead
+        contentContainerStyle={{ paddingTop: 40 }} // Increased top padding to push content even lower
       />
     </YStack>
   );
