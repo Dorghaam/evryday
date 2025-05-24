@@ -129,12 +129,9 @@ export default function EssayGenerator() {
   }, [selectedSubjectValue, selectedReadingLevelValue, router, setCurrentEssay, setReadTabVisible]);
 
   return (
-    <YStack space="$4" flex={1} paddingHorizontal="$3" paddingTop="$4" backgroundColor={colors.backgroundColor}>
+    <YStack space="$4" flex={1} paddingHorizontal="$3" paddingTop="$4" paddingBottom="$6" backgroundColor={colors.backgroundColor}>
       {/* --- Controls Section --- */}
       <YStack space="$3" paddingVertical="$3">
-        <H3 textAlign="center" color={colors.textColor} fontFamily="Inter_600SemiBold">
-          Craft Your Idea
-        </H3>
         <YStack space="$2">
           <Text fontSize="$3" color={colors.textColor} fontFamily="Inter_500Medium">Subject</Text>
           <Input
