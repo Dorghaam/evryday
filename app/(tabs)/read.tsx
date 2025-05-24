@@ -1,14 +1,15 @@
 import { useUser } from '@supabase/auth-helpers-react';
 import * as Clipboard from 'expo-clipboard';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Book, Copy, Languages, Save, Search as SearchIcon } from 'lucide-react-native';
+import { ArrowLeft, Book, Copy, Save, Search as SearchIcon } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Alert, Dimensions, Modal, TouchableOpacity } from 'react-native';
+import { Alert, Dimensions, Modal, Platform, TouchableOpacity } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import {
   Button,
   Card,
   H2, Paragraph, ScrollView,
+  Separator,
   Text,
   useTheme,
   View,
@@ -29,10 +30,9 @@ export default function ReadScreen() {
   const colors = getThemeColors();
   const [isSaving, setIsSaving] = useState(false);
 
-  const [selectedTextForMenu, setSelectedTextForMenu] = useState('');
+  const [menuText, setMenuText] = useState(''); // Text to show in menu actions
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
-  const [actualSelectedText, setActualSelectedText] = useState('');
 
   const essay = {
     subject: params.subject || currentEssay?.subject || "Untitled Essay",
@@ -42,47 +42,89 @@ export default function ReadScreen() {
 
   const handleLongPressOnContent = (event: any) => {
     const { pageX, pageY } = event.nativeEvent;
-    const textToUse = essay.content.substring(0, 30) + (essay.content.length > 30 ? "..." : "");
-    setSelectedTextForMenu(textToUse);
-    setActualSelectedText(textToUse);
+    
+    // --- THIS IS THE CORE LIMITATION ---
+    // We cannot easily get the *exact* word/phrase the user is long-pressing on
+    // from the Markdown component or standard Text components without a much more complex setup.
+    // So, we'll use a placeholder. For "Define", we'll try to take the first word of this placeholder.
+    const placeholderForInteraction = essay.content.substring(0, 30).trim() + (essay.content.length > 30 ? "..." : "");
+    setMenuText(placeholderForInteraction); 
 
-    const menuWidth = 280;
-    const menuHeight = 50;
+    const menuWidth = Platform.OS === 'ios' ? 250 : 280; // iOS menu can be a bit narrower
+    const menuHeight = 50; 
     let x = pageX - (menuWidth / 2);
-    let y = pageY - menuHeight - 20;
+    let y = pageY - menuHeight - 30; // Position above the touch point, with a bit more gap
 
     const screenWidth = Dimensions.get('window').width;
+    const screenHeight = Dimensions.get('window').height;
+
+    // Adjust X to stay within bounds
     if (x < 10) x = 10;
     if (x + menuWidth > screenWidth - 10) x = screenWidth - menuWidth - 10;
-    if (y < 50) y = 50;
+    
+    // Adjust Y to stay within bounds (simple check, might need SafeAreaView insets for more accuracy)
+    if (y < 60) y = pageY + 20; // If too high, position below touch
+    if (y + menuHeight > screenHeight - 80) y = screenHeight - menuHeight - 80; // Avoid bottom tab bar
 
     setMenuPosition({ x, y });
     setMenuVisible(true);
   };
   
-  const onDefine = () => {
+  const onDefine = async () => {
     setMenuVisible(false);
-    Alert.alert("Define", `Define: "${selectedTextForMenu}" (Dictionary API integration pending)`);
+    if (!menuText.trim()) {
+      Alert.alert("Define", "No text selected to define.");
+      return;
+    }
+    // Extract the first word from the placeholder menuText
+    const firstWordMatch = menuText.match(/(\w+)/);
+    const wordToDefine = firstWordMatch ? firstWordMatch[0] : null;
+
+    if (!wordToDefine) {
+      Alert.alert("Define", "Could not extract a word to define from the selected text snippet.");
+      return;
+    }
+
+    Alert.alert("Define", `Searching definition for: "${wordToDefine}"...`);
+    try {
+      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${wordToDefine}`);
+      const data = await response.json();
+
+      if (!response.ok || !data || data.title === "No Definitions Found") {
+        Alert.alert("Define", data.title || `No definition found for "${wordToDefine}", or an error occurred.`);
+        return;
+      }
+      
+      if (data.length > 0 && data[0].meanings && data[0].meanings.length > 0 && data[0].meanings[0].definitions && data[0].meanings[0].definitions.length > 0) {
+        const definition = data[0].meanings[0].definitions[0].definition;
+        Alert.alert(`Definition: ${data[0].word}`, definition);
+      } else {
+        Alert.alert("Define", `No specific definition found for "${wordToDefine}". The API might have returned an empty result or an unexpected format.`);
+      }
+    } catch (error: any) {
+      console.error("Define API Error:", error);
+      Alert.alert("Define Error", error.message || "Failed to fetch definition. Please check your connection or try a different word.");
+    }
   };
 
   const onTranslate = () => {
     setMenuVisible(false);
-    Alert.alert("Translate", `Translate: "${selectedTextForMenu}" (Translation API integration pending)`);
+    Alert.alert("Translate", `Translate: "${menuText}" (Translation API integration pending)`);
   };
 
   const onCopy = async () => {
     setMenuVisible(false);
-    if(actualSelectedText){
-        await Clipboard.setStringAsync(actualSelectedText);
-        Alert.alert("Copied", `"${actualSelectedText}" copied to clipboard.`);
+    if (menuText.trim()) {
+        await Clipboard.setStringAsync(menuText); // Copies the placeholder text
+        Alert.alert("Copied", `"${menuText}" (placeholder text) copied to clipboard. Precise selection not yet implemented.`);
     } else {
-        Alert.alert("Copy", "No text selected to copy.");
+        Alert.alert("Copy", "No text to copy.");
     }
   };
   
   const onHighlight = () => {
     setMenuVisible(false);
-    Alert.alert("Highlight", `Highlight: "${selectedTextForMenu}" (Visual highlighting pending)`);
+    Alert.alert("Highlight", `Visual highlighting for "${menuText}" is not yet implemented.`);
   };
 
   const handleSaveEssay = async () => {
@@ -190,7 +232,7 @@ export default function ReadScreen() {
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity onLongPress={handleLongPressOnContent} activeOpacity={1.0} delayLongPress={300}>
+        <TouchableOpacity onLongPress={handleLongPressOnContent} activeOpacity={1.0} delayLongPress={350}>
           <View>
             <Markdown style={markdownStyles}>
               {essay.content}
@@ -206,25 +248,31 @@ export default function ReadScreen() {
         onRequestClose={() => setMenuVisible(false)}
       >
         <TouchableOpacity 
-          style={{ flex: 1, justifyContent: 'flex-start', alignItems: 'flex-start' }} 
+          style={{ flex: 1 }}
           activeOpacity={1}
-          onPressOut={() => setMenuVisible(false)}
+          onPressOut={() => {
+            if (menuVisible) setMenuVisible(false);
+          }}
         >
           <Card
             elevate
             bordered
-            padding="$2"
-            borderRadius="$3"
+            paddingHorizontal="$2"
+            paddingVertical="$1.5"
+            borderRadius="$4"
             backgroundColor="$appSurface"
             position="absolute"
             left={menuPosition.x}
             top={menuPosition.y}
+            onStartShouldSetResponder={() => true}
+            onTouchEnd={(e) => e.stopPropagation()}
           >
-            <XStack space="$1.5" alignItems="center" flexWrap="nowrap">
-               <Button theme="alt1" size="$2" chromeless onPress={onHighlight} icon={<Book size={18} color={colors.textColor} />}>Highlight</Button>
-               <Button theme="alt1" size="$2" chromeless onPress={onCopy} icon={<Copy size={18} color={colors.textColor} />}>Copy</Button>
-               <Button theme="alt1" size="$2" chromeless onPress={onDefine} icon={<SearchIcon size={18} color={colors.textColor} />}>Define</Button>
-               <Button theme="alt1" size="$2" chromeless onPress={onTranslate} icon={<Languages size={18} color={colors.textColor} />}>Translate</Button>
+            <XStack space="$1" alignItems="center"> 
+               <Button theme="alt1" size="$2.5" chromeless onPress={onHighlight} icon={<Book size={16} color={colors.textColor} />}>Highlight</Button>
+               <Separator vertical marginHorizontal="$1" />
+               <Button theme="alt1" size="$2.5" chromeless onPress={onCopy} icon={<Copy size={16} color={colors.textColor} />}>Copy</Button>
+               <Separator vertical marginHorizontal="$1" />
+               <Button theme="alt1" size="$2.5" chromeless onPress={onDefine} icon={<SearchIcon size={16} color={colors.textColor} />}>Define</Button>
             </XStack>
           </Card>
         </TouchableOpacity>
