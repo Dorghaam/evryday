@@ -60,7 +60,7 @@ export default function IndexScreen() {
       </XStack>
 
       {/* Theme Toggle Section */}
-      <YStack paddingHorizontal="$3" paddingVertical="$3" backgroundColor={colors.surfaceColor}>
+      <YStack paddingHorizontal="$3" paddingVertical="$2">
         <ThemeToggle />
       </YStack>
 
