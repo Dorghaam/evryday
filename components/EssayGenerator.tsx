@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { YStack, XStack, H3, Button, Select, Adapt, Sheet, Text, Spinner, Input, ScrollView } from 'tamagui';
+import { YStack, XStack, H3, Button, Text, Spinner, Input, ScrollView } from 'tamagui';
 import { Check, ChevronDown, RefreshCw } from 'lucide-react-native';
-import { Alert } from 'react-native';
+import { Alert, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useThemeStore } from '../stores/themeStore';
 import { useEssayStore } from '../store/essayStore';
@@ -65,6 +65,9 @@ export default function EssayGenerator() {
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredSubjects, setFilteredSubjects] = useState(SUBJECTS);
+  
+  // Dropdown state for reading level
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +133,22 @@ export default function EssayGenerator() {
 
   return (
     <YStack space="$4" flex={1} paddingHorizontal="$3" paddingTop="$4" paddingBottom="$6" backgroundColor={colors.backgroundColor}>
+      {/* Click outside to close dropdown */}
+      {isDropdownOpen && (
+        <TouchableOpacity
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 999,
+          }}
+          onPress={() => setIsDropdownOpen(false)}
+          activeOpacity={1}
+        />
+      )}
+      
       {/* --- Controls Section --- */}
       <YStack space="$3" paddingVertical="$3">
         <YStack space="$2">
@@ -209,33 +228,81 @@ export default function EssayGenerator() {
 
         <YStack space="$2">
           <Text fontSize="$3" color={colors.textColor} fontFamily="Inter_500Medium">Reading Level</Text>
-          <Select value={selectedReadingLevelValue} onValueChange={setSelectedReadingLevelValue} disablePreventBodyScroll>
-            <Select.Trigger iconAfter={ChevronDown}>
-              <Select.Value placeholder="Choose a level...">
+          <YStack position="relative">
+            <TouchableOpacity
+              onPress={() => setIsDropdownOpen(!isDropdownOpen)}
+              style={{
+                borderWidth: 1,
+                borderColor: colors.borderColor,
+                backgroundColor: colors.surfaceColor,
+                borderRadius: 8,
+                height: 44,
+                paddingHorizontal: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <Text color={colors.textColor} fontSize="$3" fontFamily="Inter_500Medium">
                 {getDisplayReadingLevel(selectedReadingLevelValue)}
-              </Select.Value>
-            </Select.Trigger>
-            <Adapt when="sm" platform="native">
-              <Sheet modal dismissOnSnapToBottom snapPointsMode="fit">
-                <Sheet.Frame>
-                  <Sheet.ScrollView>
-                    <Adapt.Contents />
-                  </Sheet.ScrollView>
-                </Sheet.Frame>
-                <Sheet.Handle />
-              </Sheet>
-            </Adapt>
-            <Select.Content>
-              <Select.Viewport>
+              </Text>
+              <ChevronDown size={20} color={colors.textColor} style={{
+                transform: [{ rotate: isDropdownOpen ? '180deg' : '0deg' }]
+              }} />
+            </TouchableOpacity>
+            
+            {isDropdownOpen && (
+              <YStack
+                position="absolute"
+                top="$5"
+                left={0}
+                right={0}
+                backgroundColor={colors.surfaceColor}
+                borderWidth={1}
+                borderColor={colors.borderColor}
+                borderRadius="$3"
+                padding="$2"
+                zIndex={1000}
+                shadowColor="$shadowColor"
+                shadowOffset={{ width: 0, height: 2 }}
+                shadowOpacity={0.25}
+                shadowRadius={8}
+                elevation={5}
+              >
                 {READING_LEVELS.map((level, i) => (
-                  <Select.Item index={i} key={level} value={toValueString(level)}>
-                    <Select.ItemText>{level}</Select.ItemText>
-                    <Select.ItemIndicator marginLeft="auto"><Check size={16} /></Select.ItemIndicator>
-                  </Select.Item>
+                  <TouchableOpacity
+                    key={level}
+                    onPress={() => {
+                      setSelectedReadingLevelValue(toValueString(level));
+                      setIsDropdownOpen(false);
+                    }}
+                    style={{
+                      paddingVertical: 12,
+                      paddingHorizontal: 12,
+                      borderRadius: 6,
+                      marginVertical: 2,
+                      backgroundColor: selectedReadingLevelValue === toValueString(level) 
+                        ? colors.activeColor + '20' 
+                        : 'transparent',
+                    }}
+                  >
+                    <XStack alignItems="center" justifyContent="space-between">
+                      <Text 
+                        color={colors.textColor} 
+                        fontFamily="Inter_500Medium"
+                        fontSize="$3"
+                      >
+                        {level}
+                      </Text>
+                      {selectedReadingLevelValue === toValueString(level) && (
+                        <Check size={16} color={colors.activeColor} />
+                      )}
+                    </XStack>
+                  </TouchableOpacity>
                 ))}
-              </Select.Viewport>
-            </Select.Content>
-          </Select>
+              </YStack>
+            )}
+          </YStack>
         </YStack>
 
         <Button 
