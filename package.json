@@ -59,7 +59,8 @@
     "tamagui": "^1.126.13",
     "vm-browserify": "^1.1.2",
     "web-streams-polyfill": "^4.1.0",
-    "zustand": "^5.0.5"
+    "zustand": "^5.0.5",
+    "expo-clipboard": "~7.1.4"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

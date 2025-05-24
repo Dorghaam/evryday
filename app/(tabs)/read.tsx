@@ -1,69 +1,88 @@
-import React, { useState, useCallback, useRef } from 'react';
-import {
-  YStack, H2, Paragraph, ScrollView, Button, useTheme, Text, XStack,
-  View
-} from 'tamagui';
-import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { ArrowLeft, Save, Mic, Book, Share2, MoreHorizontal, Copy, Search, Languages } from 'lucide-react-native';
-import { useEssayStore } from '../../store/essayStore';
 import { useUser } from '@supabase/auth-helpers-react';
+import * as Clipboard from 'expo-clipboard';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft, Book, Copy, Languages, Save, Search as SearchIcon } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Alert, Dimensions, Modal, TouchableOpacity } from 'react-native';
+import Markdown from 'react-native-markdown-display';
+import {
+  Button,
+  Card,
+  H2, Paragraph, ScrollView,
+  Text,
+  useTheme,
+  View,
+  XStack,
+  YStack
+} from 'tamagui';
 import { supabase } from '../../lib/supabase/client';
-import { Alert, Modal, TouchableOpacity, findNodeHandle, ActionSheetIOS, Platform } from 'react-native';
+import { useEssayStore } from '../../store/essayStore';
 import { useThemeStore } from '../../stores/themeStore';
-import Markdown, { MarkdownIt } from 'react-native-markdown-display';
 
 export default function ReadScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ subject?: string; readingLevel?: string; content?: string }>();
   const { currentEssay } = useEssayStore();
   const user = useUser();
-  const theme = useTheme();
+  const tamaguiTheme = useTheme();
   const { getThemeColors, currentTheme: appCurrentTheme } = useThemeStore();
   const colors = getThemeColors();
   const [isSaving, setIsSaving] = useState(false);
 
-  // State for custom context menu
-  const [selectedText, setSelectedText] = useState('');
+  const [selectedTextForMenu, setSelectedTextForMenu] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [actualSelectedText, setActualSelectedText] = useState('');
 
-  const markdownRef = useRef(null);
-
-  // Use URL params if available, otherwise fall back to store
   const essay = {
-    subject: params.subject || currentEssay?.subject,
-    readingLevel: params.readingLevel || currentEssay?.readingLevel,
-    content: params.content || currentEssay?.content,
+    subject: params.subject || currentEssay?.subject || "Untitled Essay",
+    readingLevel: params.readingLevel || currentEssay?.readingLevel || "N/A",
+    content: params.content || currentEssay?.content || "No content available.",
   };
 
-  const handleTextSelection = (event: any) => {
-    const { nativeEvent } = event;
-    
-    if (essay.content) {
-        setSelectedText(essay.content.substring(0, 20) + "..." || "Selected Text");
-        setMenuPosition({ x: 50, y: 200 });
-        setMenuVisible(true);
-    }
+  const handleLongPressOnContent = (event: any) => {
+    const { pageX, pageY } = event.nativeEvent;
+    const textToUse = essay.content.substring(0, 30) + (essay.content.length > 30 ? "..." : "");
+    setSelectedTextForMenu(textToUse);
+    setActualSelectedText(textToUse);
+
+    const menuWidth = 280;
+    const menuHeight = 50;
+    let x = pageX - (menuWidth / 2);
+    let y = pageY - menuHeight - 20;
+
+    const screenWidth = Dimensions.get('window').width;
+    if (x < 10) x = 10;
+    if (x + menuWidth > screenWidth - 10) x = screenWidth - menuWidth - 10;
+    if (y < 50) y = 50;
+
+    setMenuPosition({ x, y });
+    setMenuVisible(true);
   };
   
   const onDefine = () => {
     setMenuVisible(false);
-    Alert.alert("Define", `Define: "${selectedText}" (Implementation pending)`);
+    Alert.alert("Define", `Define: "${selectedTextForMenu}" (Dictionary API integration pending)`);
   };
 
   const onTranslate = () => {
     setMenuVisible(false);
-    Alert.alert("Translate", `Translate: "${selectedText}" (Implementation pending)`);
+    Alert.alert("Translate", `Translate: "${selectedTextForMenu}" (Translation API integration pending)`);
   };
 
-  const onCopy = () => {
+  const onCopy = async () => {
     setMenuVisible(false);
-    Alert.alert("Copy", `Copied: "${selectedText}" (Clipboard API pending)`);
+    if(actualSelectedText){
+        await Clipboard.setStringAsync(actualSelectedText);
+        Alert.alert("Copied", `"${actualSelectedText}" copied to clipboard.`);
+    } else {
+        Alert.alert("Copy", "No text selected to copy.");
+    }
   };
   
   const onHighlight = () => {
     setMenuVisible(false);
-    Alert.alert("Highlight", `Highlighted: "${selectedText}" (Visual highlighting pending)`);
+    Alert.alert("Highlight", `Highlight: "${selectedTextForMenu}" (Visual highlighting pending)`);
   };
 
   const handleSaveEssay = async () => {
@@ -105,23 +124,21 @@ export default function ReadScreen() {
     }
   };
 
-  // This screen should not be directly accessible if no essay data is available
-  if (!essay.content && !params.content) {
+  if (!essay.content) {
     return (
-      <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" backgroundColor="$appBackground">
+      <YStack flex={1} jc="center" ai="center" p="$4" backgroundColor="$appBackground">
         <Stack.Screen options={{ title: "No Essay" }} />
-        <H2 color="$appTextPrimary">No Essay to Display</H2>
-        <Paragraph textAlign="center" marginTop="$2" color="$appTextPrimary">
+        <H2 color="$appText">No Essay to Display</H2>
+        <Paragraph ta="center" mt="$2" color="$appTextSecondary">
           Please generate an essay first.
         </Paragraph>
-        <Button onPress={() => router.replace('/')} marginTop="$4" backgroundColor="$appPrimary">
-          <Text color="$appButtonText">Go Home</Text>
+        <Button onPress={() => router.replace('/')} mt="$4" theme="active">
+          Go Home
         </Button>
       </YStack>
     );
   }
-
-  // Updated Markdown styling
+  
   const markdownStyles = {
     body: { color: colors.textColor, fontSize: 18, lineHeight: 30, fontFamily: 'Merriweather_400Regular', marginTop: 10 },
     heading1: { color: colors.textColor, fontSize: 32, fontFamily: 'Merriweather_700Bold', marginTop: 20, marginBottom: 10, lineHeight: 40 },
@@ -139,47 +156,48 @@ export default function ReadScreen() {
     <YStack flex={1} backgroundColor="$appBackground">
       <Stack.Screen
         options={{
-          title: essay.subject || 'Read Essay',
+          title: essay.subject,
           headerStyle: { backgroundColor: colors.surfaceColor },
           headerTintColor: colors.textColor,
           headerTitleStyle: { fontFamily: 'Inter_600SemiBold' },
           headerLeft: () => (
             <Button 
-              icon={<ArrowLeft size={24} color={theme.color?.val} />} 
+              icon={<ArrowLeft size={24} color={tamaguiTheme.color?.val || colors.textColor} />} 
               onPress={() => router.back()}
               chromeless
-              paddingLeft="$2"
+              circular
+              padding="$1.5"
             />
           ),
           headerRight: () => (
             <Button 
-              icon={<Save size={20} color="white" />}
+              icon={<Save size={20} color={tamaguiTheme.appButtonText?.val || "white"} />}
               onPress={handleSaveEssay}
               disabled={isSaving}
-              backgroundColor={colors.activeColor}
-              borderColor={colors.activeColor}
+              backgroundColor="$appPrimary"
               size="$3"
               marginRight="$2"
+              pressStyle={{ opacity: 0.8 }}
             >
-              <Text color="white" fontFamily="Inter_500Medium">
+              <Text color="$appButtonText" fontFamily="Inter_500Medium">
                 {isSaving ? "Saving..." : "Save"}
               </Text>
             </Button>
           ),
         }}
       />
-      <TouchableOpacity onLongPress={handleTextSelection} activeOpacity={0.9}>
-        <ScrollView
-          contentContainerStyle={{ padding: 20, paddingTop: 10, paddingBottom: 60 }}
-          ref={markdownRef}
-        >
-          <Markdown
-            style={markdownStyles}
-          >
-            {essay.content || params.content || "No content."}
-          </Markdown>
-        </ScrollView>
-      </TouchableOpacity>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: 80 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <TouchableOpacity onLongPress={handleLongPressOnContent} activeOpacity={1.0} delayLongPress={300}>
+          <View>
+            <Markdown style={markdownStyles}>
+              {essay.content}
+            </Markdown>
+          </View>
+        </TouchableOpacity>
+      </ScrollView>
 
       <Modal
         animationType="fade"
@@ -187,43 +205,49 @@ export default function ReadScreen() {
         visible={menuVisible}
         onRequestClose={() => setMenuVisible(false)}
       >
-        <TouchableOpacity style={{ flex: 1 }} onPressOut={() => setMenuVisible(false)} activeOpacity={1}>
-          <View
-            padding="$2.5"
+        <TouchableOpacity 
+          style={{ flex: 1, justifyContent: 'flex-start', alignItems: 'flex-start' }} 
+          activeOpacity={1}
+          onPressOut={() => setMenuVisible(false)}
+        >
+          <Card
+            elevate
+            bordered
+            padding="$2"
             borderRadius="$3"
             backgroundColor="$appSurface"
             position="absolute"
             left={menuPosition.x}
             top={menuPosition.y}
-            shadowColor="#000"
-            shadowOffset={{ width: 0, height: 2 }}
-            shadowOpacity={0.25}
-            shadowRadius={3.84}
-            borderWidth={1}
-            borderColor="$appBorder"
           >
-            <XStack space="$2" alignItems="center">
-               <Button size="$2" chromeless onPress={onHighlight} icon={<Book size={18} color={colors.textColor} />}>Highlight</Button>
-               <Button size="$2" chromeless onPress={onCopy} icon={<Copy size={18} color={colors.textColor} />}>Copy</Button>
-               <Button size="$2" chromeless onPress={onDefine} icon={<Search size={18} color={colors.textColor} />}>Define</Button>
-               <Button size="$2" chromeless onPress={onTranslate} icon={<Languages size={18} color={colors.textColor} />}>Translate</Button>
+            <XStack space="$1.5" alignItems="center" flexWrap="nowrap">
+               <Button theme="alt1" size="$2" chromeless onPress={onHighlight} icon={<Book size={18} color={colors.textColor} />}>Highlight</Button>
+               <Button theme="alt1" size="$2" chromeless onPress={onCopy} icon={<Copy size={18} color={colors.textColor} />}>Copy</Button>
+               <Button theme="alt1" size="$2" chromeless onPress={onDefine} icon={<SearchIcon size={18} color={colors.textColor} />}>Define</Button>
+               <Button theme="alt1" size="$2" chromeless onPress={onTranslate} icon={<Languages size={18} color={colors.textColor} />}>Translate</Button>
             </XStack>
-          </View>
+          </Card>
         </TouchableOpacity>
       </Modal>
       
-      <XStack justifyContent="center" marginTop="$automatically" marginBottom="$4" paddingHorizontal="$3">
+      <XStack 
+        jc="center" 
+        paddingHorizontal="$4" 
+        paddingVertical="$3" 
+        borderTopWidth={1} 
+        borderTopColor="$appBorder" 
+        backgroundColor="$appSurface"
+      >
         <Button 
           icon={<Save size={20} color="$appButtonText" />}
           onPress={handleSaveEssay}
           disabled={isSaving}
           backgroundColor="$appPrimary"
-          borderColor="$appPrimary"
           size="$4"
-          flex={1}
+          flexGrow={1}
           pressStyle={{ opacity: 0.8 }}
         >
-          <Text color="$appButtonText" fontFamily="Inter_600SemiBold" fontSize="$4">
+          <Text color="$appButtonText" fontFamily="Inter_600SemiBold" fontSize="$3">
             {isSaving ? "Saving Essay..." : "Save to My Essays"}
           </Text>
         </Button>
