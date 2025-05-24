@@ -114,9 +114,13 @@ export default function ReadScreen() {
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 40 }}>
         <Markdown
           style={{
-            body: { color: colors.textColor, fontSize: 18, lineHeight: 30, fontFamily: 'Inter_400Regular', marginTop: 20 },
-            heading2: { color: colors.textColor, fontSize: 24, fontFamily: 'Inter_600SemiBold', marginTop: 10, marginBottom: 10 },
-            strong: { fontFamily: 'Inter_700Bold', fontSize: 22, color: colors.textColor },
+            body: { color: colors.textColor, fontSize: 18, lineHeight: 30, fontFamily: 'Merriweather_400Regular', marginTop: 20 },
+            heading1: { color: colors.textColor, fontSize: 32, fontFamily: 'Merriweather_700Bold', marginTop: 15, marginBottom: 15 },
+            heading2: { color: colors.textColor, fontSize: 26, fontFamily: 'Merriweather_700Bold', marginTop: 10, marginBottom: 10 },
+            heading3: { color: colors.textColor, fontSize: 22, fontFamily: 'Merriweather_700Bold', marginTop: 10, marginBottom: 8 },
+            strong: { fontFamily: 'Merriweather_700Bold', color: colors.textColor },
+            em: { fontStyle: 'italic', color: colors.textColor },
+            paragraph: { color: colors.textColor, fontSize: 18, lineHeight: 30, fontFamily: 'Merriweather_400Regular', marginBottom: 16 },
           }}
         >
           {essay.content}

@@ -89,21 +89,28 @@ export default function RootLayout() {
   if (currentTheme === 'light') tamaguiThemeName = 'light_app';
   if (currentTheme === 'dark') tamaguiThemeName = 'dark_app';
 
-  // Safely access theme colors with fallbacks
-  const currentTamaguiTheme = (tamaguiConfig.themes as any)[tamaguiThemeName];
-  const activeColor = currentTamaguiTheme?.orange9?.val || currentTamaguiTheme?.orange10?.val || 'orange';
-  const inactiveColor = currentTamaguiTheme?.gray10?.val || 'grey';
-  const tabBackgroundColor = currentTamaguiTheme?.gray3?.val || (currentTheme === 'dark' ? '#1C1C1E' : '#FFFFFF');
-  const tabBorderColor = currentTamaguiTheme?.gray5?.val || (currentTheme === 'dark' ? '#3A3A3C' : '#D1D1D6');
+  // Get background color for StatusBar from the resolved theme colors
+  const themeColorsFromStore = useThemeStore.getState().getThemeColors();
 
   return (
     <SessionContextProvider supabaseClient={supabase}>
       <TamaguiProvider config={tamaguiConfig} defaultTheme={tamaguiThemeName as any}>
+        {/* Use Theme component to ensure nested components correctly inherit the theme */}
         <Theme name={tamaguiThemeName as any}>
-          <StatusBar style={currentTheme === 'dark' ? 'light' : 'dark'} backgroundColor={tabBackgroundColor} />
+          {/* Set StatusBar based on the actual theme in use */}
+          <StatusBar
+            style={currentTheme === 'dark' ? 'light' : 'dark'}
+            backgroundColor={themeColorsFromStore.tabBarBackground}
+          />
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="auth" options={{ presentation: 'modal', title: "Login / Sign Up" }} />
+            <Stack.Screen name="auth" options={{
+              presentation: 'modal',
+              title: "Login / Sign Up",
+              // Optional: Style header for modal based on theme
+              // headerStyle: { backgroundColor: themeColorsFromStore.surfaceColor },
+              // headerTintColor: themeColorsFromStore.textColor,
+            }} />
           </Stack>
         </Theme>
       </TamaguiProvider>

@@ -1,25 +1,23 @@
 import { Tabs } from 'expo-router';
 import { Home, BookOpen, Bookmark } from 'lucide-react-native';
 import { useThemeStore } from '../../stores/themeStore';
+import tamaguiConfig from '../../tamagui.config';
 
 export default function TabLayout() {
   const { currentTheme } = useThemeStore();
 
-  // Determine the theme name for TamaguiProvider and Theme component
-  // Map AppTheme from Zustand to Tamagui theme names
-  let tamaguiThemeName: string = currentTheme;
-  if (currentTheme === 'light') tamaguiThemeName = 'light_app';
-  if (currentTheme === 'dark') tamaguiThemeName = 'dark_app';
+  // Determine the Tamagui theme name
+  const tamaguiThemeName = currentTheme === 'dark' ? 'dark_app' : 'light_app';
 
-  // Import tamaguiConfig to get theme colors
-  const tamaguiConfig = require('../../tamagui.config').default;
-  
-  // Safely access theme colors with fallbacks
-  const currentTamaguiTheme = (tamaguiConfig.themes as any)[tamaguiThemeName];
-  const activeColor = currentTamaguiTheme?.orange9?.val || currentTamaguiTheme?.orange10?.val || 'orange';
-  const inactiveColor = currentTamaguiTheme?.gray10?.val || 'grey';
-  const tabBackgroundColor = currentTamaguiTheme?.gray3?.val || (currentTheme === 'dark' ? '#1C1C1E' : '#FFFFFF');
-  const tabBorderColor = currentTamaguiTheme?.gray5?.val || (currentTheme === 'dark' ? '#3A3A3C' : '#D1D1D6');
+  // Get colors from the resolved Tamagui theme object
+  // Ensure that 'dark_app' and 'light_app' exist in tamaguiConfig.themes
+  const currentTamaguiSpecificTheme = tamaguiConfig.themes[tamaguiThemeName];
+
+  // Fallback values are important if tokens aren't found for some reason
+  const activeColor = currentTamaguiSpecificTheme.appPrimary?.val || (currentTheme === 'dark' ? '#F4581C' : '#F4581C');
+  const inactiveColor = currentTamaguiSpecificTheme.appTextSecondary?.val || (currentTheme === 'dark' ? '#A3A3A3' : '#8E8E93');
+  const tabBackgroundColor = currentTamaguiSpecificTheme.appSurface?.val || (currentTheme === 'dark' ? '#1A1A1A' : '#FFFFFF');
+  const tabBorderColor = currentTamaguiSpecificTheme.appBorder?.val || (currentTheme === 'dark' ? '#2D2D2D' : '#D1D1D6');
 
   return (
     <Tabs
@@ -30,8 +28,9 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: tabBackgroundColor,
           borderTopColor: tabBorderColor,
-          shadowOpacity: 0, 
-          elevation: 0, 
+          borderTopWidth: 1,
+          shadowOpacity: 0,
+          elevation: 0,
           height: 85,
           paddingBottom: 15,
           paddingTop: 5,
@@ -39,13 +38,14 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '500',
+          fontFamily: 'Inter_500Medium',
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Generate',
+          title: 'Home',
           tabBarIcon: ({ color, size }) => <Home size={size*0.9} color={color} />,
         }}
       />
@@ -59,7 +59,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="saved-essays"
         options={{
-          title: 'Saved',
+          title: 'Library',
           tabBarIcon: ({ color, size }) => <Bookmark size={size*0.9} color={color} />,
         }}
       />

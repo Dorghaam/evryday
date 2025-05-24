@@ -21,14 +21,14 @@ const getColorsForTheme = (theme: AppTheme): ThemeColors => {
   switch (theme) {
     case 'dark':
       return {
-        backgroundColor: '#000000',
-        surfaceColor: '#1C1C1E',
-        textColor: '#FFFFFF',
-        activeColor: '#FF9500',
-        inactiveColor: '#8E8E93',
-        borderColor: '#3A3A3C',
-        tabBarBackground: '#1C1C1E',
-        tabBarBorder: '#3A3A3C',
+        backgroundColor: '#0C0C0C', // Very dark background, almost black
+        surfaceColor: '#1A1A1A',    // For cards, headers, slightly lighter
+        textColor: '#E5E5E5',       // Primary text (off-white)
+        activeColor: '#F4581C',     // Your brand orange
+        inactiveColor: '#A3A3A3',   // Secondary/muted text
+        borderColor: '#2D2D2D',     // Borders for elements
+        tabBarBackground: '#1A1A1A', // Tab bar background
+        tabBarBorder: '#2D2D2D',     // Tab bar top border
       };
     case 'light':
     default:
@@ -36,7 +36,7 @@ const getColorsForTheme = (theme: AppTheme): ThemeColors => {
         backgroundColor: '#FFFFFF',
         surfaceColor: '#F2F2F7',
         textColor: '#000000',
-        activeColor: '#FF9500',
+        activeColor: '#F4581C',     // Your brand orange
         inactiveColor: '#8E8E93',
         borderColor: '#D1D1D6',
         tabBarBackground: '#FFFFFF',
